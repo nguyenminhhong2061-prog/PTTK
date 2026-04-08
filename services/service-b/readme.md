@@ -21,9 +21,7 @@ Describe the responsibility of this service:
 
 | Method | Endpoint      | Description          |
 |--------|---------------|----------------------|
-| GET    | `/`           | Health check         |
-| GET    | `/resources`  | List all resources   |
-| POST   | `/resources`  | Create a resource    |
+| GET    | `/health`     | Health check         |
 | ...    | ...           | ...                  |
 
 > Full API specification: [`docs/api-specs/service-b.yaml`](../../docs/api-specs/service-b.yaml)
@@ -35,8 +33,20 @@ Describe the responsibility of this service:
 docker compose up service-b --build
 ```
 
-## Testing
+## Project Structure
 
-```bash
-# Add your test commands here
 ```
+service-b/
+├── Dockerfile
+├── readme.md
+└── src/           # Your source code goes here
+```
+
+## Environment Variables
+
+| Variable   | Description         | Default   |
+|------------|---------------------|-----------|
+| `DB_HOST`  | Database hostname   | localhost |
+| `DB_PORT`  | Database port       | 5432      |
+
+

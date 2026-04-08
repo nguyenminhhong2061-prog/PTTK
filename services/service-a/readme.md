@@ -21,9 +21,7 @@ Describe the responsibility of this service:
 
 | Method | Endpoint      | Description          |
 |--------|---------------|----------------------|
-| GET    | `/`           | Health check         |
-| GET    | `/items`      | List all items       |
-| POST   | `/items`      | Create a new item    |
+| GET    | `/health`     | Health check         |
 | ...    | ...           | ...                  |
 
 > Full API specification: [`docs/api-specs/service-a.yaml`](../../docs/api-specs/service-a.yaml)
@@ -58,14 +56,4 @@ service-a/
 | `DB_HOST`  | Database hostname   | localhost |
 | `DB_PORT`  | Database port       | 5432      |
 
-## Testing
 
-Describe how to run tests for this service:
-
-```bash
-# Example:
-# npm test
-# pytest
-# go test ./...
-# dotnet test
-```
