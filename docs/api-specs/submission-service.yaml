@@ -1,0 +1,557 @@
+# ================================================
+# Submission Service — OpenAPI 3.0 Specification
+# Mô tả: Quản lý phiên làm bài, lưu đáp án và chấm điểm
+# Tác giả: Nhóm dự án — Thành viên 2
+# ================================================
+
+openapi: 3.0.3
+info:
+  title: Submission Service API
+  description: |
+    ## Mô tả
+    Submission Service quản lý toàn bộ quá trình học sinh làm bài thi: từ lúc bắt đầu phiên thi,
+    lưu tạm đáp án trong quá trình làm, đến khi nộp bài và chấm điểm tự động.
+
+    ## Tính năng chính
+    - **Tạo phiên làm bài**: Khởi tạo session thi, ghi nhận thời gian bắt đầu
+    - **Lưu tạm đáp án**: Học sinh có thể lưu tiến trình và tiếp tục sau
+    - **Nộp bài & chấm điểm**: So sánh đáp án tự động, tính điểm ngay tức thì
+    - **Kiểm tra gian lận**: Mỗi học sinh chỉ được nộp 1 lần cho mỗi bài thi
+
+    ## Giao tiếp nội bộ
+    Service này gọi **Exam Service** (`http://exam-service:5000`) để lấy đề thi
+    và đáp án đúng khi chấm bài.
+  version: 1.0.0
+  contact:
+    name: Nhóm dự án
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5002
+    description: Môi trường development (trực tiếp)
+  - url: http://localhost:8080/api
+    description: Qua API Gateway
+
+tags:
+  - name: health
+    description: Kiểm tra trạng thái service
+  - name: submissions
+    description: Quản lý phiên làm bài và bài nộp
+
+paths:
+  # ─── Health Check ────────────────────────────────
+  /health:
+    get:
+      tags: [health]
+      summary: Kiểm tra trạng thái service
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service đang hoạt động bình thường
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                service: submission-service
+                timestamp: "2026-04-10T09:00:00Z"
+
+  # ─── Submissions ─────────────────────────────────
+  /submissions:
+    post:
+      tags: [submissions]
+      summary: Bắt đầu làm bài thi (tạo phiên mới)
+      description: |
+        Học sinh bắt đầu làm một bài thi. Service sẽ:
+        1. Kiểm tra học sinh chưa nộp bài thi này trước đó
+        2. Kiểm tra bài thi đang ở trạng thái `published`
+        3. Gọi Exam Service để lấy danh sách câu hỏi (không có đáp án)
+        4. Tạo submission mới với `status=in_progress`
+        5. Trả về câu hỏi để học sinh làm bài
+
+        **Lưu ý**: Nếu học sinh đang có phiên `in_progress` cho bài thi này,
+        service sẽ trả về phiên đó thay vì tạo mới (hỗ trợ resume khi mất kết nối).
+      operationId: startExam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartExamRequest'
+            example:
+              examId: "550e8400-e29b-41d4-a716-446655440000"
+              studentId: "student_B20DCCN001"
+      responses:
+        '201':
+          description: Phiên làm bài được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionStartResponse'
+        '200':
+          description: Phiên làm bài đang tồn tại (resume) — trả về phiên cũ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionStartResponse'
+        '400':
+          description: Bài thi không tồn tại hoặc không ở trạng thái published
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "EXAM_NOT_AVAILABLE"
+                message: "Bài thi chưa được công bố hoặc đã đóng"
+        '409':
+          description: Học sinh đã nộp bài thi này rồi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "ALREADY_SUBMITTED"
+                message: "Bạn đã nộp bài thi này. Không thể làm lại."
+
+    get:
+      tags: [submissions]
+      summary: Lấy lịch sử làm bài
+      description: |
+        Lấy danh sách các phiên làm bài.
+        - Học sinh xem lịch sử thi của bản thân
+        - Statistics Service gọi endpoint này để lấy dữ liệu tổng hợp
+      operationId: listSubmissions
+      parameters:
+        - name: studentId
+          in: query
+          schema:
+            type: string
+          description: Lọc theo ID học sinh
+        - name: examId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Lọc theo ID bài thi
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [in_progress, submitted]
+          description: Lọc theo trạng thái
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Danh sách bài nộp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionListResponse'
+
+  /submissions/{submissionId}:
+    parameters:
+      - $ref: '#/components/parameters/submissionId'
+
+    get:
+      tags: [submissions]
+      summary: Xem chi tiết bài nộp
+      description: |
+        Xem kết quả và chi tiết bài làm.
+        - Nếu chưa nộp (`in_progress`): trả về các câu đã trả lời (không có đáp án đúng)
+        - Nếu đã nộp (`submitted`): trả về điểm, đáp án đúng và câu trả lời của học sinh
+      operationId: getSubmission
+      responses:
+        '200':
+          description: Chi tiết bài nộp
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /submissions/{submissionId}/answers:
+    parameters:
+      - $ref: '#/components/parameters/submissionId'
+
+    put:
+      tags: [submissions]
+      summary: Lưu đáp án (lưu tạm trong quá trình làm)
+      description: |
+        Học sinh lưu câu trả lời trong quá trình làm bài. Có thể gọi nhiều lần.
+        Chỉ hoạt động khi submission có `status=in_progress`.
+
+        **Lưu ý**: Không tự động nộp bài — phải gọi endpoint `/submit` riêng.
+      operationId: saveAnswers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAnswersRequest'
+            example:
+              answers:
+                - questionId: "550e8400-e29b-41d4-a716-446655440001"
+                  selectedOption: "A"
+                - questionId: "550e8400-e29b-41d4-a716-446655440002"
+                  selectedOption: "C"
+                - questionId: "550e8400-e29b-41d4-a716-446655440003"
+                  selectedOption: null
+      responses:
+        '200':
+          description: Đáp án đã được lưu thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Đáp án đã được lưu tạm"
+                  savedCount:
+                    type: integer
+                    description: Số câu đã trả lời (không bao gồm câu để trống)
+                  savedAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Submission đã được nộp, không thể chỉnh sửa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /submissions/{submissionId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/submissionId'
+
+    post:
+      tags: [submissions]
+      summary: Nộp bài thi và chấm điểm tự động
+      description: |
+        Học sinh nộp bài thi. Service sẽ thực hiện:
+        1. Kiểm tra submission còn `in_progress` và chưa hết giờ
+        2. Gọi Exam Service lấy đáp án đúng (internal call với `includeAnswers=true`)
+        3. So sánh từng đáp án của học sinh với đáp án đúng
+        4. Tính điểm: `score = (số câu đúng / tổng số câu) * 100`
+        5. Cập nhật submission sang `status=submitted`, lưu điểm và đáp án
+        6. Trả về kết quả chi tiết
+
+        **Lưu ý**: Nếu hết thời gian, hệ thống sẽ tự động gọi endpoint này.
+      operationId: submitExam
+      requestBody:
+        description: Có thể kèm đáp án cuối cùng trước khi nộp (tùy chọn)
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAnswersRequest'
+      responses:
+        '200':
+          description: Nộp bài thành công — trả về kết quả ngay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResponse'
+              example:
+                submissionId: "660e8400-e29b-41d4-a716-446655440001"
+                examId: "550e8400-e29b-41d4-a716-446655440000"
+                studentId: "student_B20DCCN001"
+                score: 85.0
+                correctCount: 17
+                totalQuestions: 20
+                passed: true
+                submittedAt: "2026-04-10T10:30:00Z"
+                answers:
+                  - questionId: "q1"
+                    selectedOption: "A"
+                    correctAnswer: "A"
+                    isCorrect: true
+        '400':
+          description: Đã hết thời gian làm bài
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Bài thi đã được nộp trước đó
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+# ─── Components ──────────────────────────────────
+components:
+  parameters:
+    submissionId:
+      name: submissionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: ID của phiên làm bài
+
+  responses:
+    BadRequest:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "NOT_FOUND"
+            message: "Không tìm thấy bài nộp với ID đã cho"
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: submission-service
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Mã lỗi
+        message:
+          type: string
+          description: Mô tả lỗi
+
+    StartExamRequest:
+      type: object
+      required: [examId, studentId]
+      properties:
+        examId:
+          type: string
+          format: uuid
+          description: ID bài thi muốn làm
+        studentId:
+          type: string
+          description: ID học sinh
+
+    QuestionForStudent:
+      type: object
+      description: Câu hỏi hiển thị cho học sinh (không có đáp án)
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        orderIndex:
+          type: integer
+        content:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+        optionC:
+          type: string
+        optionD:
+          type: string
+        selectedOption:
+          type: string
+          enum: [A, B, C, D]
+          nullable: true
+          description: Đáp án đã chọn (nếu có) — để resume khi mất kết nối
+
+    SubmissionStartResponse:
+      type: object
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        studentId:
+          type: string
+        status:
+          type: string
+          enum: [in_progress]
+        totalQuestions:
+          type: integer
+        durationMinutes:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        deadlineAt:
+          type: string
+          format: date-time
+          description: Thời điểm hết hạn nộp bài (startedAt + durationMinutes)
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionForStudent'
+
+    AnswerItem:
+      type: object
+      required: [questionId]
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        selectedOption:
+          type: string
+          enum: [A, B, C, D]
+          nullable: true
+          description: Null nghĩa là bỏ qua câu này
+
+    SaveAnswersRequest:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerItem'
+
+    SubmissionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        studentId:
+          type: string
+        status:
+          type: string
+          enum: [in_progress, submitted]
+        score:
+          type: number
+          format: float
+          nullable: true
+          description: Điểm số (0-100), null nếu chưa nộp
+        correctCount:
+          type: integer
+          nullable: true
+        totalQuestions:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SubmissionListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubmissionSummary'
+
+    AnswerDetailItem:
+      type: object
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        orderIndex:
+          type: integer
+        questionContent:
+          type: string
+        selectedOption:
+          type: string
+          enum: [A, B, C, D]
+          nullable: true
+        correctAnswer:
+          type: string
+          enum: [A, B, C, D]
+          description: Chỉ hiển thị sau khi đã nộp bài
+        isCorrect:
+          type: boolean
+          nullable: true
+
+    SubmissionDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/SubmissionSummary'
+        - type: object
+          properties:
+            answers:
+              type: array
+              items:
+                $ref: '#/components/schemas/AnswerDetailItem'
+
+    SubmitResponse:
+      type: object
+      properties:
+        submissionId:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+        score:
+          type: number
+          format: float
+          description: Điểm số (0-100)
+        correctCount:
+          type: integer
+          description: Số câu trả lời đúng
+        totalQuestions:
+          type: integer
+          description: Tổng số câu hỏi
+        passed:
+          type: boolean
+          description: Đạt hay không (score >= 50)
+        submittedAt:
+          type: string
+          format: date-time
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerDetailItem'

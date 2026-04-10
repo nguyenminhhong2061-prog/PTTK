@@ -1,0 +1,601 @@
+# ================================================
+# Exam Service — OpenAPI 3.0 Specification
+# Mô tả: Quản lý câu hỏi và bài thi trắc nghiệm
+# Tác giả: Nhóm dự án — Thành viên 1
+# ================================================
+
+openapi: 3.0.3
+info:
+  title: Exam Service API
+  description: |
+    ## Mô tả
+    Exam Service chịu trách nhiệm quản lý toàn bộ vòng đời của câu hỏi và bài thi trắc nghiệm.
+
+    ## Tính năng chính
+    - **Quản lý câu hỏi**: Tạo, sửa, xóa câu hỏi trắc nghiệm 4 đáp án
+    - **Quản lý bài thi**: Tạo bài thi, thêm câu hỏi, cấu hình thời gian
+    - **Vòng đời bài thi**: Nháp → Công bố → Đóng
+
+    ## Lưu ý bảo mật
+    - Endpoint `GET /exams/{examId}/questions?includeAnswers=true` chỉ dành cho internal service call
+      (Submission Service gọi khi chấm điểm), không expose qua API Gateway
+    - Giáo viên mới có quyền tạo/sửa/xóa câu hỏi và bài thi
+  version: 1.0.0
+  contact:
+    name: Nhóm dự án
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5001
+    description: Môi trường development (trực tiếp)
+  - url: http://localhost:8080/api
+    description: Qua API Gateway
+
+tags:
+  - name: health
+    description: Kiểm tra trạng thái service
+  - name: questions
+    description: Quản lý ngân hàng câu hỏi
+  - name: exams
+    description: Quản lý bài thi
+
+paths:
+  # ─── Health Check ────────────────────────────────
+  /health:
+    get:
+      tags: [health]
+      summary: Kiểm tra trạng thái service
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service đang hoạt động bình thường
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                service: exam-service
+                timestamp: "2026-04-10T09:00:00Z"
+
+  # ─── Questions ───────────────────────────────────
+  /questions:
+    get:
+      tags: [questions]
+      summary: Lấy danh sách câu hỏi
+      description: Giáo viên xem toàn bộ ngân hàng câu hỏi. Hỗ trợ phân trang.
+      operationId: listQuestions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Số trang
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: Số câu hỏi mỗi trang
+        - name: createdBy
+          in: query
+          schema:
+            type: string
+          description: Lọc theo giáo viên tạo
+      responses:
+        '200':
+          description: Danh sách câu hỏi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionListResponse'
+
+    post:
+      tags: [questions]
+      summary: Tạo câu hỏi mới
+      description: Giáo viên tạo câu hỏi trắc nghiệm mới với 4 lựa chọn và đáp án đúng.
+      operationId: createQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCreate'
+            example:
+              content: "Ngôn ngữ lập trình nào được sử dụng trong hệ thống?"
+              optionA: "Python"
+              optionB: "Java"
+              optionC: "Go"
+              optionD: "Ruby"
+              correctAnswer: "A"
+              createdBy: "teacher_001"
+      responses:
+        '201':
+          description: Câu hỏi được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /questions/{questionId}:
+    parameters:
+      - $ref: '#/components/parameters/questionId'
+
+    get:
+      tags: [questions]
+      summary: Xem chi tiết câu hỏi
+      operationId: getQuestion
+      responses:
+        '200':
+          description: Chi tiết câu hỏi (bao gồm đáp án đúng — dành cho giáo viên)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [questions]
+      summary: Cập nhật câu hỏi
+      description: Chỉnh sửa nội dung câu hỏi.
+      operationId: updateQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionCreate'
+      responses:
+        '200':
+          description: Câu hỏi đã được cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags: [questions]
+      summary: Xóa câu hỏi
+      description: Xóa câu hỏi khỏi ngân hàng. Không thể xóa câu hỏi đang được dùng trong bài thi đã công bố.
+      operationId: deleteQuestion
+      responses:
+        '204':
+          description: Câu hỏi đã được xóa thành công
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Câu hỏi đang được sử dụng trong bài thi đã công bố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ─── Exams ───────────────────────────────────────
+  /exams:
+    get:
+      tags: [exams]
+      summary: Lấy danh sách bài thi
+      description: |
+        - Giáo viên: xem tất cả bài thi
+        - Học sinh: chỉ xem bài thi có status=published
+      operationId: listExams
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, closed]
+          description: Lọc theo trạng thái
+        - name: createdBy
+          in: query
+          schema:
+            type: string
+          description: Lọc theo giáo viên tạo
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Danh sách bài thi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamListResponse'
+
+    post:
+      tags: [exams]
+      summary: Tạo bài thi mới
+      description: Giáo viên tạo bài thi mới. Bài thi được tạo ở trạng thái "draft".
+      operationId: createExam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamCreate'
+            example:
+              title: "Kiểm tra Giữa kỳ — Lập trình Python"
+              description: "Bài kiểm tra bao gồm các kiến thức cơ bản về Python"
+              durationMinutes: 45
+              questionIds:
+                - "550e8400-e29b-41d4-a716-446655440001"
+                - "550e8400-e29b-41d4-a716-446655440002"
+              createdBy: "teacher_001"
+      responses:
+        '201':
+          description: Bài thi được tạo thành công (status=draft)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /exams/{examId}:
+    parameters:
+      - $ref: '#/components/parameters/examId'
+
+    get:
+      tags: [exams]
+      summary: Xem chi tiết bài thi
+      operationId: getExam
+      responses:
+        '200':
+          description: Chi tiết bài thi (không bao gồm đáp án)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [exams]
+      summary: Cập nhật bài thi
+      description: Chỉ cập nhật được bài thi ở trạng thái "draft".
+      operationId: updateExam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExamCreate'
+      responses:
+        '200':
+          description: Bài thi đã được cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Không thể sửa bài thi đã công bố
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exams/{examId}/status:
+    parameters:
+      - $ref: '#/components/parameters/examId'
+
+    patch:
+      tags: [exams]
+      summary: Thay đổi trạng thái bài thi
+      description: |
+        Luồng trạng thái hợp lệ:
+        - `draft` → `published` (công bố bài thi, yêu cầu có ít nhất 1 câu hỏi)
+        - `published` → `closed` (đóng bài thi, không nhận bài nộp mới)
+      operationId: updateExamStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [published, closed]
+            example:
+              status: published
+      responses:
+        '200':
+          description: Trạng thái đã được cập nhật
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  examId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /exams/{examId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/examId'
+
+    get:
+      tags: [exams]
+      summary: Lấy câu hỏi của bài thi
+      description: |
+        - **Mặc định**: Trả về câu hỏi **không có** `correctAnswer` (dành cho học sinh)
+        - **includeAnswers=true**: Trả về **cả** `correctAnswer` — chỉ dùng cho internal service call (Submission Service chấm điểm), không expose qua Gateway
+      operationId: getExamQuestions
+      parameters:
+        - name: includeAnswers
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Có trả về đáp án đúng không (chỉ dùng nội bộ)
+      responses:
+        '200':
+          description: Danh sách câu hỏi trong bài thi (theo thứ tự)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  examId:
+                    type: string
+                    format: uuid
+                  totalQuestions:
+                    type: integer
+                  questions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ExamQuestionItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# ─── Components ──────────────────────────────────
+components:
+  parameters:
+    questionId:
+      name: questionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: ID của câu hỏi
+
+    examId:
+      name: examId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: ID của bài thi
+
+  responses:
+    BadRequest:
+      description: Dữ liệu đầu vào không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "VALIDATION_ERROR"
+            message: "Câu hỏi phải có đúng 4 lựa chọn và 1 đáp án đúng"
+
+    NotFound:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "NOT_FOUND"
+            message: "Không tìm thấy tài nguyên với ID đã cho"
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: exam-service
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Mã lỗi
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Mô tả lỗi
+          example: "Dữ liệu không hợp lệ"
+
+    QuestionCreate:
+      type: object
+      required: [content, optionA, optionB, optionC, optionD, correctAnswer, createdBy]
+      properties:
+        content:
+          type: string
+          minLength: 10
+          description: Nội dung câu hỏi
+        optionA:
+          type: string
+          description: Lựa chọn A
+        optionB:
+          type: string
+          description: Lựa chọn B
+        optionC:
+          type: string
+          description: Lựa chọn C
+        optionD:
+          type: string
+          description: Lựa chọn D
+        correctAnswer:
+          type: string
+          enum: [A, B, C, D]
+          description: Đáp án đúng
+        createdBy:
+          type: string
+          description: ID của giáo viên tạo câu hỏi
+
+    QuestionResponse:
+      allOf:
+        - $ref: '#/components/schemas/QuestionCreate'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    QuestionListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Tổng số câu hỏi
+        page:
+          type: integer
+        limit:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionResponse'
+
+    ExamQuestionItem:
+      type: object
+      description: Câu hỏi trong bài thi (không có correctAnswer khi trả về cho học sinh)
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        orderIndex:
+          type: integer
+          description: Thứ tự câu trong bài thi
+        content:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+        optionC:
+          type: string
+        optionD:
+          type: string
+        correctAnswer:
+          type: string
+          enum: [A, B, C, D]
+          description: "Chỉ có mặt khi includeAnswers=true (internal use only)"
+
+    ExamCreate:
+      type: object
+      required: [title, durationMinutes, questionIds, createdBy]
+      properties:
+        title:
+          type: string
+          minLength: 5
+          description: Tiêu đề bài thi
+        description:
+          type: string
+          description: Mô tả bài thi
+        durationMinutes:
+          type: integer
+          minimum: 1
+          maximum: 300
+          description: Thời gian làm bài (phút)
+        questionIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+          description: Danh sách ID câu hỏi theo thứ tự
+        createdBy:
+          type: string
+          description: ID của giáo viên tạo bài thi
+
+    ExamResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        durationMinutes:
+          type: integer
+        status:
+          type: string
+          enum: [draft, published, closed]
+        totalQuestions:
+          type: integer
+        createdBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ExamListResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExamResponse'

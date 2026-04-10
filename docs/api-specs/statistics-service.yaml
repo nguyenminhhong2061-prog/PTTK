@@ -1,0 +1,486 @@
+# ================================================
+# Statistics Service — OpenAPI 3.0 Specification
+# Mô tả: Thống kê và báo cáo kết quả thi
+# Tác giả: Nhóm dự án — Thành viên 3
+# ================================================
+
+openapi: 3.0.3
+info:
+  title: Statistics Service API
+  description: |
+    ## Mô tả
+    Statistics Service tổng hợp và phân tích dữ liệu từ các bài nộp để cung cấp
+    báo cáo, thống kê cho giáo viên.
+
+    ## Tính năng chính
+    - **Thống kê tổng quan**: Điểm trung bình, max, min, phân bố điểm, tỷ lệ đỗ
+    - **Phân tích câu hỏi**: Tỷ lệ đúng/sai theo từng câu, xác định câu hỏi khó/dễ
+    - **Bảng điểm học sinh**: Danh sách kết quả theo thứ hạng
+
+    ## Kiến trúc
+    Service này **không có database riêng**. Toàn bộ dữ liệu được lấy từ
+    **Submission Service** (`http://submission-service:5000`) qua HTTP call nội bộ.
+
+    Ưu điểm:
+    - Không cần đồng bộ dữ liệu
+    - Luôn phản ánh dữ liệu mới nhất từ Submission Service
+    - Có thể cache kết quả tính toán ở tầng ứng dụng nếu cần tối ưu
+  version: 1.0.0
+  contact:
+    name: Nhóm dự án
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:5003
+    description: Môi trường development (trực tiếp)
+  - url: http://localhost:8080/api
+    description: Qua API Gateway
+
+tags:
+  - name: health
+    description: Kiểm tra trạng thái service
+  - name: statistics
+    description: Thống kê và báo cáo kết quả thi
+
+paths:
+  # ─── Health Check ────────────────────────────────
+  /health:
+    get:
+      tags: [health]
+      summary: Kiểm tra trạng thái service
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service đang hoạt động bình thường
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+                service: statistics-service
+                timestamp: "2026-04-10T09:00:00Z"
+
+  # ─── Statistics ──────────────────────────────────
+  /statistics/exams/{examId}:
+    parameters:
+      - $ref: '#/components/parameters/examId'
+
+    get:
+      tags: [statistics]
+      summary: Thống kê tổng quan một bài thi
+      description: |
+        Tổng hợp kết quả tất cả học sinh đã tham gia làm bài thi.
+
+        **Dữ liệu trả về bao gồm:**
+        - Số lượng học sinh đã thi và đã nộp bài
+        - Điểm trung bình, cao nhất, thấp nhất
+        - Phân bố điểm theo khoảng (0-20, 21-40, 41-60, 61-80, 81-100)
+        - Tỷ lệ đỗ/rớt (ngưỡng đỗ mặc định: 50 điểm)
+        - Thời gian làm bài trung bình
+      operationId: getExamStatistics
+      responses:
+        '200':
+          description: Thống kê tổng quan bài thi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExamStatisticsResponse'
+              example:
+                examId: "550e8400-e29b-41d4-a716-446655440000"
+                examTitle: "Kiểm tra Giữa kỳ — Lập trình Python"
+                totalParticipants: 45
+                totalSubmitted: 42
+                averageScore: 72.4
+                highestScore: 100.0
+                lowestScore: 20.0
+                passRate: 85.7
+                passCount: 36
+                failCount: 6
+                scoreDistribution:
+                  - range: "0-20"
+                    count: 1
+                    percentage: 2.4
+                  - range: "21-40"
+                    count: 2
+                    percentage: 4.8
+                  - range: "41-60"
+                    count: 3
+                    percentage: 7.1
+                  - range: "61-80"
+                    count: 18
+                    percentage: 42.9
+                  - range: "81-100"
+                    count: 18
+                    percentage: 42.9
+                averageDurationMinutes: 38.5
+                generatedAt: "2026-04-10T10:00:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Không thể kết nối đến Submission Service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "UPSTREAM_UNAVAILABLE"
+                message: "Submission Service hiện không khả dụng, vui lòng thử lại sau"
+
+  /statistics/exams/{examId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/examId'
+
+    get:
+      tags: [statistics]
+      summary: Phân tích chi tiết từng câu hỏi trong bài thi
+      description: |
+        Phân tích tỷ lệ đúng/sai và phân bố lựa chọn (A/B/C/D) cho từng câu hỏi.
+        Giúp giáo viên xác định:
+        - Câu hỏi nào quá khó hoặc quá dễ
+        - Lựa chọn nào học sinh hay chọn sai (distractor analysis)
+        - Tỷ lệ bỏ qua của từng câu
+      operationId: getExamQuestionStatistics
+      responses:
+        '200':
+          description: Thống kê theo từng câu hỏi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionStatisticsResponse'
+              example:
+                examId: "550e8400-e29b-41d4-a716-446655440000"
+                examTitle: "Kiểm tra Giữa kỳ — Lập trình Python"
+                totalSubmitted: 42
+                questions:
+                  - questionId: "q1"
+                    orderIndex: 1
+                    content: "Python là ngôn ngữ lập trình gì?"
+                    correctAnswer: "A"
+                    correctRate: 90.5
+                    incorrectRate: 7.1
+                    skipRate: 2.4
+                    difficulty: easy
+                    optionDistribution:
+                      A: 38
+                      B: 2
+                      C: 1
+                      D: 0
+                      skipped: 1
+                  - questionId: "q2"
+                    orderIndex: 2
+                    content: "Hàm nào dùng để đọc input từ bàn phím?"
+                    correctAnswer: "B"
+                    correctRate: 45.2
+                    incorrectRate: 50.0
+                    skipRate: 4.8
+                    difficulty: hard
+                    optionDistribution:
+                      A: 15
+                      B: 19
+                      C: 4
+                      D: 2
+                      skipped: 2
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /statistics/exams/{examId}/students:
+    parameters:
+      - $ref: '#/components/parameters/examId'
+
+    get:
+      tags: [statistics]
+      summary: Bảng điểm học sinh theo bài thi
+      description: |
+        Danh sách tất cả học sinh đã tham gia làm bài thi, sắp xếp theo điểm từ cao đến thấp.
+        Bao gồm thứ hạng, điểm số, số câu đúng và thời gian làm bài.
+      operationId: getExamStudentScores
+      parameters:
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [score, submittedAt, studentId]
+            default: score
+          description: Tiêu chí sắp xếp
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Thứ tự sắp xếp
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: Bảng điểm học sinh
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentScoreListResponse'
+              example:
+                examId: "550e8400-e29b-41d4-a716-446655440000"
+                examTitle: "Kiểm tra Giữa kỳ — Lập trình Python"
+                totalSubmitted: 42
+                page: 1
+                limit: 50
+                students:
+                  - rank: 1
+                    studentId: "student_B20DCCN001"
+                    score: 100.0
+                    correctCount: 20
+                    totalQuestions: 20
+                    passed: true
+                    durationMinutes: 30
+                    submittedAt: "2026-04-10T09:30:00Z"
+                  - rank: 2
+                    studentId: "student_B20DCCN002"
+                    score: 95.0
+                    correctCount: 19
+                    totalQuestions: 20
+                    passed: true
+                    durationMinutes: 42
+                    submittedAt: "2026-04-10T09:45:00Z"
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+# ─── Components ──────────────────────────────────
+components:
+  parameters:
+    examId:
+      name: examId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: ID của bài thi cần xem thống kê
+
+  responses:
+    NotFound:
+      description: Không tìm thấy dữ liệu
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "NOT_FOUND"
+            message: "Không tìm thấy bài thi hoặc chưa có dữ liệu thống kê"
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: statistics-service
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          description: Mã lỗi
+        message:
+          type: string
+          description: Mô tả lỗi
+
+    ScoreRange:
+      type: object
+      description: Phân bố điểm trong một khoảng
+      properties:
+        range:
+          type: string
+          example: "61-80"
+          description: Khoảng điểm
+        count:
+          type: integer
+          description: Số học sinh trong khoảng này
+        percentage:
+          type: number
+          format: float
+          description: Tỷ lệ phần trăm
+
+    ExamStatisticsResponse:
+      type: object
+      properties:
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        totalParticipants:
+          type: integer
+          description: Tổng số học sinh đã bắt đầu làm bài (kể cả bỏ dở)
+        totalSubmitted:
+          type: integer
+          description: Số học sinh đã nộp bài
+        averageScore:
+          type: number
+          format: float
+          description: Điểm trung bình (tính trên người đã nộp)
+        highestScore:
+          type: number
+          format: float
+          description: Điểm cao nhất
+        lowestScore:
+          type: number
+          format: float
+          description: Điểm thấp nhất
+        passRate:
+          type: number
+          format: float
+          description: Tỷ lệ đỗ (%) — ngưỡng đỗ là 50 điểm
+        passCount:
+          type: integer
+          description: Số học sinh đỗ
+        failCount:
+          type: integer
+          description: Số học sinh rớt
+        scoreDistribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScoreRange'
+        averageDurationMinutes:
+          type: number
+          format: float
+          description: Thời gian làm bài trung bình (phút)
+        generatedAt:
+          type: string
+          format: date-time
+          description: Thời điểm tạo báo cáo
+
+    OptionDistribution:
+      type: object
+      description: Số học sinh chọn mỗi phương án
+      properties:
+        A:
+          type: integer
+        B:
+          type: integer
+        C:
+          type: integer
+        D:
+          type: integer
+        skipped:
+          type: integer
+          description: Số học sinh bỏ qua câu này
+
+    QuestionStatItem:
+      type: object
+      properties:
+        questionId:
+          type: string
+          format: uuid
+        orderIndex:
+          type: integer
+        content:
+          type: string
+          description: Nội dung câu hỏi
+        correctAnswer:
+          type: string
+          enum: [A, B, C, D]
+        correctRate:
+          type: number
+          format: float
+          description: Tỷ lệ % trả lời đúng
+        incorrectRate:
+          type: number
+          format: float
+          description: Tỷ lệ % trả lời sai
+        skipRate:
+          type: number
+          format: float
+          description: Tỷ lệ % bỏ qua
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+          description: |
+            Độ khó tự động xác định:
+            - easy: correctRate >= 70%
+            - medium: 40% <= correctRate < 70%
+            - hard: correctRate < 40%
+        optionDistribution:
+          $ref: '#/components/schemas/OptionDistribution'
+
+    QuestionStatisticsResponse:
+      type: object
+      properties:
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        totalSubmitted:
+          type: integer
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionStatItem'
+
+    StudentScoreItem:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Thứ hạng trong bài thi (1 = cao nhất)
+        studentId:
+          type: string
+          description: ID học sinh
+        score:
+          type: number
+          format: float
+          description: Điểm số (0-100)
+        correctCount:
+          type: integer
+          description: Số câu đúng
+        totalQuestions:
+          type: integer
+          description: Tổng số câu hỏi
+        passed:
+          type: boolean
+          description: Đỗ hay rớt
+        durationMinutes:
+          type: number
+          format: float
+          description: Thời gian làm bài thực tế (phút)
+        submittedAt:
+          type: string
+          format: date-time
+
+    StudentScoreListResponse:
+      type: object
+      properties:
+        examId:
+          type: string
+          format: uuid
+        examTitle:
+          type: string
+        totalSubmitted:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        students:
+          type: array
+          items:
+            $ref: '#/components/schemas/StudentScoreItem'

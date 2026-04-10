@@ -406,11 +406,11 @@ flowchart TD
 graph LR
     U[👤 User\nGiáo viên / Học sinh] --> FE[Frontend\n:3000]
     FE --> GW[API Gateway\n:8080]
-    GW --> SA[Exam Service\n:5001]
-    GW --> SB[Submission Service\n:5002]
-    GW --> SC[Statistics Service\n:5003]
-    SA --> DB1[(DB Exam\nPostgreSQL)]
-    SB --> DB2[(DB Submission\nPostgreSQL)]
+    GW --> SA[Exam Service\n:5001\nSpring Boot]
+    GW --> SB[Submission Service\n:5002\nSpring Boot]
+    GW --> SC[Statistics Service\n:5003\nSpring Boot]
+    SA --> DB1[(DB Exam\nMySQL :3306)]
+    SB --> DB2[(DB Submission\nMySQL :3307)]
     SC -.->|gọi API| SB
     SB -.->|gọi API| SA
 ```
