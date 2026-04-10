@@ -419,7 +419,7 @@ graph LR
 
 | Thành viên | Phụ trách | Công việc chính |
 |---|---|---|
-| **Thành viên 1** | Exam Service + API Gateway | Implement CRUD câu hỏi, CRUD bài thi, công bố bài thi; cấu hình Gateway routing; viết OpenAPI spec |
+| **Thành viên 1** | Exam Service + API Gateway | Implement CRUD câu hỏi, CRUD bài thi, công bố bài thi; cấu hình Gateway routing|
 | **Thành viên 2** | Submission Service + Frontend | Implement tạo phiên làm bài, lưu đáp án, nộp bài và chấm điểm tự động; xây dựng giao diện học sinh |
 | **Thành viên 3** | Statistics Service + Frontend | Implement API thống kê và báo cáo; xây dựng giao diện giáo viên (dashboard thống kê) |
 
