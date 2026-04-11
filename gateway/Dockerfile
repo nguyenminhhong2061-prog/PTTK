@@ -1,8 +1,3 @@
-# API Gateway — Dockerfile
-# Replace with your actual setup.
-# See .ai/prompts/create-dockerfile.md for templates (Node.js, Python, Go, Nginx).
-#
-# Requirements: expose port 8000, route to backend services.
-
-# TODO: Replace with your actual Dockerfile.
-FROM scratch
+FROM nginx:1.25-alpine
+COPY src/nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
