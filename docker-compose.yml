@@ -1,10 +1,9 @@
-# Docker Compose — Hệ Thống Thi Trắc Nghiệm Online
-# Chạy: docker compose up --build
-# Tech stack: Java Spring Boot 3 + MySQL 8.0 + Nginx
+# Docker Compose — Multi-container orchestration
+# Run: docker compose up --build
+# Docs: https://docs.docker.com/compose/
 
 services:
-
-  # ─── Frontend ─────────────────────────────────────────
+  # ─── Frontend ────────────────────────────────────
   frontend:
     build: ./frontend
     ports:
@@ -14,109 +13,74 @@ services:
     networks:
       - app-network
 
-  # ─── API Gateway (Nginx) ───────────────────────────────
+  # ─── API Gateway ─────────────────────────────────
   gateway:
     build: ./gateway
     ports:
-      - "${GATEWAY_PORT:-8080}:80"
+      - "${GATEWAY_PORT:-8080}:8000"
     depends_on:
-      - exam-service
-      - submission-service
-      - statistics-service
+      - service-a
+      - service-b
     networks:
       - app-network
 
-  # ─── Exam Service (TV1) ────────────────────────────────
-  exam-service:
-    build: ./services/exam-service
+  # ─── Service A ───────────────────────────────────
+  service-a:
+    build: ./services/service-a
     ports:
-      - "${EXAM_SERVICE_PORT:-5001}:8080"
-    environment:
-      DB_HOST: exam-db
-      DB_PORT: 3306
-      DB_NAME: exam_db
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-changeme}
-    depends_on:
-      exam-db:
-        condition: service_healthy
+      - "${SERVICE_A_PORT:-5001}:5000"
+    env_file:
+      - .env
+    networks:
+      - app-network
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+
+  # ─── Service B ───────────────────────────────────
+  service-b:
+    build: ./services/service-b
+    ports:
+      - "${SERVICE_B_PORT:-5002}:5000"
+    env_file:
+      - .env
     networks:
       - app-network
 
-  # ─── Submission Service (TV2) ──────────────────────────
-  submission-service:
-    build: ./services/submission-service
-    ports:
-      - "${SUBMISSION_SERVICE_PORT:-5002}:8080"
-    environment:
-      DB_HOST: submission-db
-      DB_PORT: 3306
-      DB_NAME: submission_db
-      DB_USER: ${DB_USER:-root}
-      DB_PASSWORD: ${DB_PASSWORD:-changeme}
-      EXAM_SERVICE_URL: http://exam-service:8080
-    depends_on:
-      submission-db:
-        condition: service_healthy
-      exam-service:
-        condition: service_started
-    networks:
-      - app-network
+  # ─── Shared Infrastructure (uncomment as needed) ─
+  # db:
+  #   image: postgres:16-alpine    # or mysql:8, mongo:7, etc.
+  #   ports:
+  #     - "${DB_PORT:-5432}:5432"
+  #   environment:
+  #     POSTGRES_DB: ${DB_NAME:-mydb}
+  #     POSTGRES_USER: ${DB_USER:-admin}
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   networks:
+  #     - app-network
 
-  # ─── Statistics Service (TV3) ──────────────────────────
-  statistics-service:
-    build: ./services/statistics-service
-    ports:
-      - "${STATISTICS_SERVICE_PORT:-5003}:8080"
-    environment:
-      SUBMISSION_SERVICE_URL: http://submission-service:8080
-    networks:
-      - app-network
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
 
-  # ─── Database: Exam (MySQL) ────────────────────────────
-  exam-db:
-    image: mysql:8.0
-    ports:
-      - "${EXAM_DB_PORT:-3306}:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
-      MYSQL_DATABASE: exam_db
-      MYSQL_ROOT_HOST: "%"
-    volumes:
-      - exam-db-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-changeme}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - app-network
-
-  # ─── Database: Submission (MySQL) ──────────────────────
-  submission-db:
-    image: mysql:8.0
-    ports:
-      - "${SUBMISSION_DB_PORT:-3307}:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
-      MYSQL_DATABASE: submission_db
-      MYSQL_ROOT_HOST: "%"
-    volumes:
-      - submission-db-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-changeme}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - app-network
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   networks:
+  #     - app-network
 
 networks:
   app-network:
     driver: bridge
 
-volumes:
-  exam-db-data:
-  submission-db-data:
+# volumes:
+#   db-data:
