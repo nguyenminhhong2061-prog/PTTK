@@ -1,0 +1,30 @@
+services:
+  exam-db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: exam_db
+      MYSQL_ROOT_PASSWORD: verysecret
+    ports:
+      - "3307:3306"
+    healthcheck:
+      # Force TCP check; socket-based ping can pass before mysqld listens on 3306.
+      test: ["CMD-SHELL", "mysqladmin ping --protocol=tcp -h 127.0.0.1 -P 3306 -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  exam-service:
+    build:
+      context: .
+    depends_on:
+      exam-db:
+        condition: service_healthy
+    environment:
+      DB_HOST: exam-db
+      DB_PORT: 3306
+      DB_NAME: exam_db
+      DB_USER: root
+      DB_PASSWORD: verysecret
+      JPA_DDL_AUTO: update
+    ports:
+      - "5001:8080"
