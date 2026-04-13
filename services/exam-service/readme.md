@@ -2,7 +2,7 @@
 Phụ trách: Nguyễn Minh Hồng
 
 # Description
-Exam Service quản lý toàn bộ ngân hàng câu hỏi và đề thi: tạo/sửa/xóa câu hỏi, tạo/cập nhật đề thi, quản lý trạng thái đề (`DRAFT -> PUBLISHED -> CLOSED`) và cung cấp bộ câu hỏi theo đề cho phía học sinh/chấm điểm.
+Exam Service quản lý toàn bộ ngân hàng câu hỏi và đề thi: tạo/sửa/xóa câu hỏi, tạo/cập nhật đề thi, quản lý trạng thái đề và cung cấp bộ câu hỏi theo đề cho phía học sinh/chấm điểm.
 
 ## Tech Stack
 | Component | Lựa chọn |
