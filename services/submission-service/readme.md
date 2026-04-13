@@ -6,11 +6,9 @@
 
 ### Nghiệp vụ (Business Domain)
 
-Service này thuộc lĩnh vực **quản lý phiên làm bài thi** (_exam session management_). Nó xử lý mọi hoạt động phát sinh sau khi bài thi đã được giáo viên công bố, bao gồm: học sinh bắt đầu thi, lưu tiến trình, nộp bài và nhận điểm.
+ Nó xử lý mọi hoạt động phát sinh sau khi bài thi đã được giáo viên công bố, bao gồm: học sinh bắt đầu thi, lưu tiến trình, nộp bài và nhận điểm.
 
 ### Dữ liệu sở hữu (Data Ownership)
-
-Service này là **nguồn sự thật duy nhất** (_single source of truth_) cho hai loại dữ liệu sau:
 
 | Bảng         | Mô tả                                                                           |
 |--------------|---------------------------------------------------------------------------------|
