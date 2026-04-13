@@ -1,8 +1,24 @@
+<<<<<<< HEAD
 # Exam Service
 Phụ trách: Thành viên 1
 
 ## Mô tả
 Exam Service quản lý toàn bộ ngân hàng câu hỏi và đề thi: tạo/sửa/xóa câu hỏi, tạo/cập nhật đề thi, quản lý trạng thái đề (`DRAFT -> PUBLISHED -> CLOSED`) và cung cấp bộ câu hỏi theo đề cho phía học sinh/chấm điểm.
+=======
+# Exam-service
+
+
+## Overview
+
+Describe the responsibility of this service:
+
+- **What business domain does it cover?**  
+  Online quiz/exam management domain (question bank + exam lifecycle).
+- **What data does it own?**  
+  `questions`, `exams`, and `exam_questions` (mapping exam-question with order index).
+- **What operations does it expose?**  
+  CRUD for questions, CRUD/list for exams, exam status transition, and retrieval of exam questions (with/without answers).
+>>>>>>> 67ec56faf87083477e9eefccdfacbf3af82ed426
 
 ## Tech Stack
 | Component | Lựa chọn |
