@@ -1,5 +1,0 @@
-# Keep the Docker build context focused on source inputs.
-.git
-.idea
-target
-README.md
