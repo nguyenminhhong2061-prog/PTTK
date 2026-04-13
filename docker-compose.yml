@@ -110,8 +110,23 @@ services:
     build: ./frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      DOCKER_ENV: "true"
+      VITE_PROXY_EXAM_TARGET: http://exam-service:8080
+      VITE_PROXY_SUB_TARGET: http://submission-service:8080
+      VITE_PROXY_STATS_TARGET: http://statistics-service:8080
     depends_on:
       - gateway
+      - exam-service
+      - submission-service
+      - statistics-service
+    command: >
+      sh -c "
+      until wget -q -O - http://exam-service:8080/actuator/health >/dev/null 2>&1; do echo 'waiting exam-service...'; sleep 2; done;
+      until wget -q -O - http://submission-service:8080/health >/dev/null 2>&1; do echo 'waiting submission-service...'; sleep 2; done;
+      until wget -q -O - http://statistics-service:8080/health >/dev/null 2>&1; do echo 'waiting statistics-service...'; sleep 2; done;
+      npm run dev -- --host 0.0.0.0 --port 3000
+      "
     networks:
       - app-network
 
