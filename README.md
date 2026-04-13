@@ -1,22 +1,21 @@
-# Online Quiz Microservices System
+# Hệ thống thi trắc nghiệm online
 
-He thong thi trac nghiem theo kien truc microservices.  
-This project implements an online quiz platform using a microservices architecture.
+Hệ thống thi trắc nghiệm online theo kiến trúc microservices.  
 
 ## Team Members
 
 | Name | Student ID | Role | Contribution |
 |------|------------|------|-------------|
-| Nguyen Minh Hong | B22DCCN409 | TV1 | Exam Service (question bank, exam management) |
-| (Update) | (Update) | TV2 | Submission Service (exam session, grading) |
-| (Update) | (Update) | TV3 | Statistics Service + Teacher analytics dashboard |
+| Nguyễn Minh Hồng | B21DCCN400 | TV1 | Exam Service (question bank, exam management) |
+| Phùng Trung Kiên | B22DCCN433 | TV2 | Submission Service (exam session, grading) + analysis and design + architecture |
+| Kim Duy Hưng | B22DCCN409 | TV3 | Statistics Service + Teacher analytics dashboard |
 
 ## Business Scope
 
 - **Actors / Tac nhan**: Teacher, Student.
-- **Teacher flow**: tao cau hoi, tao de thi, cong bo/dong de, xem thong ke ket qua.
-- **Student flow**: bat dau lam bai, luu dap an, nop bai, xem ket qua.
-- **System goal**: tach nghiep vu theo service de de phat trien, test va trien khai.
+- **Teacher flow**: tạo câu hỏi, tạo đề thi, công bố / đóng đề thi, xem thống kê kết quả.
+- **Student flow**: bắt đầu làm bài , lưu đáp án, nộp bài, xem kết quả.
+- **System goal**: tách nghiệp vụ theo service để phát triển, test và triển khai.
 
 ## Architecture
 
@@ -116,9 +115,9 @@ docker compose down -v            # stop and remove volumes
 
 ## Troubleshooting
 
-- **Port already allocated**: doi port trong `.env` (vd `SUBMISSION_DB_PORT=3310`) hoac dung container dang chiem port.
-- **Frontend "Failed to fetch" khi vua khoi dong**: doi 10-20 giay de backend healthy, sau do refresh lai.
-- **Data khong hien tren dashboard**: kiem tra dung `examId`, va kiem tra service health o muc tren.
+- **Port already allocated**: đổi port trong `.env` (vd `SUBMISSION_DB_PORT=3310`) hoặc dùng container đang chiếm port.
+- **Frontend "Failed to fetch" khi vừa khởi động**: đợi 10-20s để backend healthy, sau đó refresh lại.
+- **Data không hiện trên dashboard**: kiểm tra đúng `examId`, và kiểm tra service health ở mục trên.
 
 ## License
 
