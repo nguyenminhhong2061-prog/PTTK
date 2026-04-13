@@ -1,84 +1,126 @@
-# Project Name
+# Online Quiz Microservices System
 
-[![Stars](https://img.shields.io/github/stars/hungdn1701/microservices-assignment-starter?style=social)](https://github.com/hungdn1701/microservices-assignment-starter/stargazers)
-[![Forks](https://img.shields.io/github/forks/hungdn1701/microservices-assignment-starter?style=social)](https://github.com/hungdn1701/microservices-assignment-starter/network/members)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
-> Brief description of the business process being automated and the service-oriented solution.
-
-> **New to this repo?** See [`GETTING_STARTED.md`](GETTING_STARTED.md) for setup instructions and workflow guide.
-
----
+He thong thi trac nghiem theo kien truc microservices.  
+This project implements an online quiz platform using a microservices architecture.
 
 ## Team Members
 
 | Name | Student ID | Role | Contribution |
 |------|------------|------|-------------|
-|      |            |      |             |
+| Nguyen Minh Hong | B22DCCN409 | TV1 | Exam Service (question bank, exam management) |
+| (Update) | (Update) | TV2 | Submission Service (exam session, grading) |
+| (Update) | (Update) | TV3 | Statistics Service + Teacher analytics dashboard |
 
----
+## Business Scope
 
-## Business Process
-
-*(Summarize the business process being automated — domain, actors, scope)*
-
----
+- **Actors / Tac nhan**: Teacher, Student.
+- **Teacher flow**: tao cau hoi, tao de thi, cong bo/dong de, xem thong ke ket qua.
+- **Student flow**: bat dau lam bai, luu dap an, nop bai, xem ket qua.
+- **System goal**: tach nghiep vu theo service de de phat trien, test va trien khai.
 
 ## Architecture
 
 ```mermaid
 graph LR
-    U[User] --> FE[Frontend :3000]
-    FE --> GW[API Gateway :8080]
-    GW --> SA[Service A :5001]
-    GW --> SB[Service B :5002]
-    SA --> DB1[(Database A)]
-    SB --> DB2[(Database B)]
+    U[User Browser] --> FE[Frontend - Vite :3000]
+    FE --> GW[API Gateway - Nginx :8080]
+    GW --> EX[Exam Service :5001]
+    GW --> SUB[Submission Service :5002]
+    GW --> ST[Statistics Service :5003]
+    EX --> EXDB[(exam_db - MySQL)]
+    SUB --> SUBDB[(submission_db - MySQL)]
+    SUB --> EX
+    ST --> SUB
 ```
 
-| Component     | Responsibility | Tech Stack | Port |
-|---------------|----------------|------------|------|
-| **Frontend**  |                |            | 3000 |
-| **Gateway**   |                |            | 8080 |
-| **Service A** |                |            | 5001 |
-| **Service B** |                |            | 5002 |
+| Component | Responsibility | Tech Stack | Port |
+|---|---|---|---|
+| `frontend` | Teacher/Student UI | React + Vite | 3000 |
+| `gateway` | Single API entrypoint, routing | Nginx | 8080 |
+| `exam-service` | Questions, exams, exam status | Spring Boot + MySQL | 5001 |
+| `submission-service` | Exam session, answers, auto grading | Spring Boot + MySQL | 5002 |
+| `statistics-service` | Overview, question analytics, leaderboard | Spring Boot (stateless) | 5003 |
+| `exam-db` | Database of exam-service | MySQL 8.0 | 3306 (host) |
+| `submission-db` | Database of submission-service | MySQL 8.0 | 3307 (host) |
 
-> Full documentation: [`docs/architecture.md`](docs/architecture.md) · [`docs/analysis-and-design.md`](docs/analysis-and-design.md)
+## Repository Structure
 
----
+```text
+.
+├── docker-compose.yml
+├── .env.example
+├── frontend/
+├── gateway/
+├── services/
+│   ├── exam-service/
+│   ├── submission-service/
+│   └── statistics-service/
+└── docs/
+    └── api-specs/
+```
 
-## Getting Started
+## Quick Start
+
+### 1) Prerequisites
+
+- Docker Desktop (with Docker Compose)
+- Git
+
+### 2) Run full system
 
 ```bash
-# Clone and initialize
-git clone <your-repo-url>
-cd <project-folder>
+# from project root
 cp .env.example .env
-
-# Build and run
-docker compose up --build
+docker compose up --build -d
 ```
 
-### Verify
+> PowerShell tren Windows: `copy .env.example .env`
+
+### 3) Access URLs
+
+- Frontend: `http://localhost:3000`
+- API Gateway: `http://localhost:8080`
+- Exam Service: `http://localhost:5001`
+- Submission Service: `http://localhost:5002`
+- Statistics Service: `http://localhost:5003`
+
+## Health Check
 
 ```bash
-curl http://localhost:8080/health   # Gateway
-curl http://localhost:5001/health   # Service A
-curl http://localhost:5002/health   # Service B
+curl http://localhost:8080/health            # gateway
+curl http://localhost:5001/actuator/health   # exam-service
+curl http://localhost:5002/health            # submission-service
+curl http://localhost:5003/health            # statistics-service
 ```
 
----
+## API Documentation (OpenAPI)
 
-## API Documentation
+- [Exam Service Spec](docs/api-specs/exam-service.yaml)
+- [Submission Service Spec](docs/api-specs/submission-service.yaml)
+- [Statistics Service Spec](docs/api-specs/statistics-service.yaml)
 
-- [Service A — OpenAPI Spec](docs/api-specs/service-a.yaml)
-- [Service B — OpenAPI Spec](docs/api-specs/service-b.yaml)
+## Service Notes
 
----
+- Services communicate via Docker DNS names (`exam-service`, `submission-service`, `statistics-service`), not localhost.
+- `statistics-service` is stateless and reads data from `submission-service`.
+- Frontend in Docker is configured with internal proxy targets and startup wait to reduce early fetch failures.
+
+## Common Commands
+
+```bash
+docker compose ps                 # show service status
+docker compose logs -f gateway    # follow gateway logs
+docker compose down               # stop all services
+docker compose down -v            # stop and remove volumes
+```
+
+## Troubleshooting
+
+- **Port already allocated**: doi port trong `.env` (vd `SUBMISSION_DB_PORT=3310`) hoac dung container dang chiem port.
+- **Frontend "Failed to fetch" khi vua khoi dong**: doi 10-20 giay de backend healthy, sau do refresh lai.
+- **Data khong hien tren dashboard**: kiem tra dung `examId`, va kiem tra service health o muc tren.
 
 ## License
 
 This project uses the [MIT License](LICENSE).
-
-> Template by [Hung Dang](https://github.com/hungdn1701) · [Template guide](GETTING_STARTED.md)
 
