@@ -1,8 +1,12 @@
-# Frontend — Dockerfile
-# Replace with your actual setup.
-# See .ai/prompts/create-dockerfile.md for templates (React, Vue, Angular, static, SSR).
-#
-# Requirements: expose port 3000, production-ready build.
+FROM node:20-alpine
 
-# TODO: Replace with your actual Dockerfile.
-FROM scratch
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar.jsx';
 import { getExamStatistics, getExamQuestionStatistics, getStudentScores } from '../../api/statisticsApi.js';
 import { getExamById } from '../../api/examApi.js';
+import { Users, FileX, Award, Clock, ArrowLeft, BarChart2, CheckCircle2, XCircle, Search, HelpCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
 // ─── Difficulty config ────────────────────────────────────────────────────────
 const DIFF = {
@@ -83,12 +85,12 @@ export default function ExamStatsPage() {
       <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
         <Navbar />
         <div className="container section" style={{ maxWidth: 600, textAlign: 'center', paddingTop: 80 }}>
-          <div style={{ fontSize: '3rem', marginBottom: 16 }}>📉</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><FileX size={48} color="var(--error)" strokeWidth={1.5} /></div>
           <h2 style={{ color: 'var(--error)', marginBottom: 12 }}>Không thể tải thống kê</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>{error}</p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button className="btn btn-secondary" onClick={() => navigate('/teacher')}>← Về Dashboard</button>
-            <button className="btn btn-primary" onClick={loadAll}>🔄 Thử lại</button>
+            <button className="btn btn-secondary" onClick={() => navigate('/teacher')}><ArrowLeft size={16} /> Về Dashboard</button>
+            <button className="btn btn-primary" onClick={loadAll}>Vẽ lại</button>
           </div>
         </div>
       </div>
@@ -108,11 +110,11 @@ export default function ExamStatsPage() {
         {/* ── Breadcrumb & title ── */}
         <div style={{ marginBottom: 28, animation: 'fadeIn 0.5s ease' }}>
           <button className="btn btn-ghost btn-sm" style={{ marginBottom: 12, paddingLeft: 0 }} onClick={() => navigate('/teacher')}>
-            ← Về Dashboard
+            <ArrowLeft size={16} /> Về Dashboard
           </button>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: 4 }}>📊 Thống Kê Kết Quả</h1>
+              <h1 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart2 size={26} color="var(--accent)" /> Thống Kê Kết Quả</h1>
               <p style={{ color: 'var(--accent-light)', fontWeight: 600, fontSize: '1rem' }}>{examTitle}</p>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -129,12 +131,12 @@ export default function ExamStatsPage() {
         {/* ── Overview cards ── */}
         {overview ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14, marginBottom: 32, animation: 'fadeIn 0.5s ease' }}>
-            <OverviewCard icon="👥" label="Đã nộp bài"    value={overview.totalSubmitted ?? 0}                              color="var(--accent)" />
-            <OverviewCard icon="📐" label="Điểm TB"       value={`${(overview.averageScore ?? 0).toFixed(1)}đ`}             color="var(--violet)" />
-            <OverviewCard icon="🏆" label="Điểm cao nhất" value={`${(overview.highestScore ?? 0).toFixed(1)}đ`}             color="var(--success)" />
-            <OverviewCard icon="📉" label="Điểm thấp nhất" value={`${(overview.lowestScore ?? 0).toFixed(1)}đ`}             color="var(--error)" />
-            <OverviewCard icon="✅" label="Tỷ lệ đạt"     value={`${(overview.passRate ?? 0).toFixed(1)}%`}                 color="var(--success)" sub={`${overview.passCount} / ${overview.totalSubmitted} em`} />
-            <OverviewCard icon="⏳" label="TG TB"         value={overview.averageDurationMinutes != null ? `${overview.averageDurationMinutes.toFixed(0)} phút` : '—'} color="var(--warning)" />
+            <OverviewCard icon={<Users size={28} />} label="Đã nộp bài"    value={overview.totalSubmitted ?? 0}                              color="var(--accent)" />
+            <OverviewCard icon={<Award size={28} />} label="Điểm TB"       value={`${(overview.averageScore ?? 0).toFixed(1)}đ`}             color="var(--violet)" />
+            <OverviewCard icon={<CheckCircle2 size={28} />} label="Điểm cao nhất" value={`${(overview.highestScore ?? 0).toFixed(1)}đ`}             color="var(--success)" />
+            <OverviewCard icon={<XCircle size={28} />} label="Điểm thấp nhất" value={`${(overview.lowestScore ?? 0).toFixed(1)}đ`}             color="var(--error)" />
+            <OverviewCard icon={<CheckCircle2 size={28} />} label="Tỷ lệ đạt"     value={`${(overview.passRate ?? 0).toFixed(1)}%`}                 color="var(--success)" sub={`${overview.passCount} / ${overview.totalSubmitted} em`} />
+            <OverviewCard icon={<Clock size={28} />} label="TG TB"         value={overview.averageDurationMinutes != null ? `${overview.averageDurationMinutes.toFixed(0)} phút` : '—'} color="var(--warning)" />
           </div>
         ) : (
           <div style={{ padding: '24px', background: 'var(--surface)', borderRadius: 12, marginBottom: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -153,11 +155,11 @@ export default function ExamStatsPage() {
         {/* ── Tabs ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div className="tabs" style={{ width: 'auto' }}>
-            <button className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')}>
-              👤 Bảng điểm học sinh ({studentList.length})
+            <button className={`tab-btn ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Users size={16} /> Bảng điểm học sinh ({studentList.length})
             </button>
-            <button className={`tab-btn ${activeTab === 'questions' ? 'active' : ''}`} onClick={() => setActiveTab('questions')}>
-              ❓ Phân tích câu hỏi ({questionList.length})
+            <button className={`tab-btn ${activeTab === 'questions' ? 'active' : ''}`} onClick={() => setActiveTab('questions')} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <HelpCircle size={16} /> Phân tích câu hỏi ({questionList.length})
             </button>
           </div>
         </div>
@@ -166,7 +168,7 @@ export default function ExamStatsPage() {
         {activeTab === 'students' && (
           <div style={{ animation: 'fadeIn 0.4s ease' }}>
             {studentList.length === 0 ? (
-              <EmptyState icon="👤" title="Chưa có học sinh nào nộp bài" desc="Học sinh cần nộp bài trước khi có thống kê." />
+              <EmptyState icon={<Search size={48} />} title="Chưa có học sinh nào nộp bài" desc="Học sinh cần nộp bài trước khi có thống kê." />
             ) : (
               <div className="card" style={{ overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
@@ -232,7 +234,7 @@ export default function ExamStatsPage() {
         {activeTab === 'questions' && (
           <div style={{ animation: 'fadeIn 0.4s ease' }}>
             {questionList.length === 0 ? (
-              <EmptyState icon="❓" title="Chưa có phân tích câu hỏi" desc="Câu hỏi sẽ được phân tích sau khi có học sinh nộp bài." />
+              <EmptyState icon={<HelpCircle size={48} />} title="Chưa có phân tích câu hỏi" desc="Câu hỏi sẽ được phân tích sau khi có học sinh nộp bài." />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {questionList.map((q, i) => (
@@ -253,7 +255,7 @@ export default function ExamStatsPage() {
 function OverviewCard({ icon, label, value, color, sub }) {
   return (
     <div className="card" style={{ padding: '20px 20px', textAlign: 'center', animation: 'scaleIn 0.4s ease' }}>
-      <div style={{ fontSize: '2rem', marginBottom: 8 }}>{icon}</div>
+      <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>{icon}</div>
       <div style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1, marginBottom: 4 }}>{value}</div>
       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</div>
       {sub && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
@@ -262,22 +264,35 @@ function OverviewCard({ icon, label, value, color, sub }) {
 }
 
 function ScoreDistributionBar({ distribution }) {
-  const max = Math.max(...distribution.map(d => d.count), 1);
-  const colors = ['#f87171', '#fb923c', '#fbbf24', '#34d399', '#818cf8'];
-  return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 80 }}>
-      {distribution.map((d, i) => (
-        <div key={d.range} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{d.count}</span>
-          <div style={{
-            width: '100%', height: `${Math.max((d.count / max) * 60, d.count > 0 ? 8 : 0)}px`,
-            background: colors[i], borderRadius: '4px 4px 0 0', minHeight: d.count > 0 ? 8 : 0,
-            transition: 'height 0.6s ease',
-          }} />
-          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.2 }}>{d.range}</span>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{d.percentage?.toFixed(0)}%</span>
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ background: 'var(--bg-primary)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>Dải điểm: {label}</p>
+          <p style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
+            {payload[0].value} bài thi ({payload[0].payload.percentage?.toFixed(0)}%)
+          </p>
         </div>
-      ))}
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div style={{ width: '100%', height: 260 }}>
+      <ResponsiveContainer>
+        <BarChart data={distribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="range" stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 13 }} axisLine={false} tickLine={false} />
+          <YAxis stroke="var(--text-muted)" tick={{ fill: 'var(--text-muted)', fontSize: 13 }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+            {distribution.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.count > 0 ? 'var(--accent)' : 'var(--border)'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -370,7 +385,7 @@ function RateBar({ label, pct, color }) {
 function EmptyState({ icon, title, desc }) {
   return (
     <div className="empty-state">
-      <div className="empty-state-icon">{icon}</div>
+      <div className="empty-state-icon" style={{ display: 'flex', justifyContent: 'center', color: 'var(--text-muted)' }}>{icon}</div>
       <h3 style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: 8 }}>{title}</h3>
       <p style={{ fontSize: '0.9rem' }}>{desc}</p>
     </div>

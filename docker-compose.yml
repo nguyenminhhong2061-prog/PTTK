@@ -93,6 +93,28 @@ services:
     networks:
       - app-network
 
+  # ─── Statistics Service (TV3) ──────────────────────────
+  statistics-service:
+    build: ./services/statistics-service
+    ports:
+      - "${STATISTICS_SERVICE_PORT:-5003}:8080"
+    environment:
+      SUBMISSION_SERVICE_URL: http://submission-service:8080
+    depends_on:
+      - submission-service
+    networks:
+      - app-network
+
+  # ─── Frontend (Vite) ────────────────────────────────
+  frontend:
+    build: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - gateway
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
