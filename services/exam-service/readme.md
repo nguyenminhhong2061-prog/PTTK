@@ -109,7 +109,7 @@ URL nội bộ Docker: `http://exam-service:8080`
 ## Chạy Cục Bộ
 ```bash
 # Với Docker Compose (khuyến nghị)
-docker compose up exam-db exam-service --build
+docker compose up --build
 
 # Kiểm tra health
 curl http://localhost:5001/health
