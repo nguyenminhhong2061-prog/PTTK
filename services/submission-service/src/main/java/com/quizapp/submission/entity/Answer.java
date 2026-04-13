@@ -1,5 +1,7 @@
 package com.quizapp.submission.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.quizapp.submission.enums.AnswerOption;
 import jakarta.persistence.*;
 import lombok.*;
@@ -29,6 +31,8 @@ public class Answer {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "submission_id", nullable = false)
+    @JsonIgnore  // Ngăn vòng lặp JSON: Answer → Submission → answers → Answer...
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Submission submission;
 
     @Column(name = "question_id", length = 36, nullable = false)

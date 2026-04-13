@@ -26,7 +26,7 @@ public class ExamServiceClient {
      * Lấy chi tiết bài thi (không có đáp án).
      * Dùng khi học sinh bắt đầu làm bài.
      */
-    public ExamDetailDto getExamDetail(String examId) {
+    public ExamDetailDto getExamDetail(Long examId) {
         return webClient.get()
                 .uri("/exams/{examId}", examId)
                 .retrieve()
@@ -38,7 +38,7 @@ public class ExamServiceClient {
      * Lấy câu hỏi của bài thi — KHÔNG có đáp án (includeAnswers=false).
      * Dùng để hiển thị đề thi cho học sinh làm bài.
      */
-    public ExamQuestionsDto getExamQuestions(String examId) {
+    public ExamQuestionsDto getExamQuestions(Long examId) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/exams/{examId}/questions")
@@ -53,7 +53,7 @@ public class ExamServiceClient {
      * Lấy câu hỏi CÓ đáp án đúng (includeAnswers=true).
      * Chỉ gọi nội bộ khi chấm điểm, KHÔNG expose ra bên ngoài.
      */
-    public ExamQuestionsDto getExamQuestionsWithAnswers(String examId) {
+    public ExamQuestionsDto getExamQuestionsWithAnswers(Long examId) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/exams/{examId}/questions")
@@ -69,7 +69,7 @@ public class ExamServiceClient {
     @Data
     @NoArgsConstructor
     public static class ExamDetailDto {
-        private String id;
+        private Long id;         // Long — khớp với Exam Service @GeneratedValue(IDENTITY)
         private String title;
         private String description;
         private Integer durationMinutes;
@@ -81,7 +81,7 @@ public class ExamServiceClient {
     @Data
     @NoArgsConstructor
     public static class ExamQuestionsDto {
-        private String examId;
+        private Long examId;     // Long — khớp với Exam Service
         private Integer totalQuestions;
         private List<QuestionDto> questions;
     }

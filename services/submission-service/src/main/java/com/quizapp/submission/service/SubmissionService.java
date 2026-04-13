@@ -6,6 +6,7 @@ import com.quizapp.submission.dto.request.SaveAnswersRequest;
 import com.quizapp.submission.dto.request.StartExamRequest;
 import com.quizapp.submission.dto.response.SubmissionDetailResponse;
 import com.quizapp.submission.dto.response.SubmissionStartResponse;
+import com.quizapp.submission.dto.response.SubmissionSummaryResponse;
 import com.quizapp.submission.dto.response.SubmitResponse;
 import com.quizapp.submission.entity.Answer;
 import com.quizapp.submission.entity.Submission;
@@ -38,7 +39,7 @@ public class SubmissionService {
 
     @Transactional
     public SubmissionStartResponse startExam(StartExamRequest request) {
-        String examId = request.getExamId();
+        Long examId = request.getExamId();   // Long — khớp với Exam Service
         String studentId = request.getStudentId();
 
         // 1. Kiểm tra đã có submission cho bài thi này chưa
@@ -52,7 +53,7 @@ public class SubmissionService {
             }
             // Đang IN_PROGRESS → resume phiên cũ
             log.info("Resume submission {} for student {}", sub.getId(), studentId);
-            return buildStartResponse(sub, examId);
+            return buildStartResponse(sub, examId, false);  // false = resume, không phải mới
         }
 
         // 2. Lấy thông tin bài thi từ Exam Service
@@ -103,7 +104,7 @@ public class SubmissionService {
         log.info("Created new submission {} for student {} on exam {}", submission.getId(), studentId, examId);
 
         // 6. Map sang response (kèm câu hỏi)
-        return buildStartResponseWithQuestions(submission, examDetail, examQuestions.getQuestions(), answers);
+        return buildStartResponseWithQuestions(submission, examDetail, examQuestions.getQuestions(), answers, true);
     }
 
     // ── Lưu đáp án tạm ──────────────────────────────────────────────────
@@ -194,23 +195,27 @@ public class SubmissionService {
         return buildDetailResponse(submission, answers);
     }
 
-    public List<Submission> listSubmissions(String studentId, String examId, String status) {
-        if (studentId != null && examId != null) {
-            return submissionRepository.findByStudentIdAndExamId(studentId, examId)
+    public List<SubmissionSummaryResponse> listSubmissions(String studentId, String examId, String status) {
+        List<Submission> submissions;
+        Long examIdLong = (examId != null) ? Long.parseLong(examId) : null;
+        if (studentId != null && examIdLong != null) {
+            submissions = submissionRepository.findByStudentIdAndExamId(studentId, examIdLong)
                     .map(List::of)
                     .orElse(List.of());
-        }
-        if (studentId != null) {
-            return submissionRepository.findByStudentId(studentId);
-        }
-        if (examId != null) {
+        } else if (studentId != null) {
+            submissions = submissionRepository.findByStudentId(studentId);
+        } else if (examIdLong != null) {
             if (status != null) {
-                return submissionRepository.findByExamIdAndStatus(
-                        examId, SubmissionStatus.valueOf(status.toUpperCase()));
+                submissions = submissionRepository.findByExamIdAndStatus(
+                        examIdLong, SubmissionStatus.valueOf(status.toUpperCase()));
+            } else {
+                submissions = submissionRepository.findByExamId(examIdLong);
             }
-            return submissionRepository.findByExamId(examId);
+        } else {
+            submissions = submissionRepository.findAll();
         }
-        return submissionRepository.findAll();
+        // Đổi sang DTO — tránh serialize entity trực tiếp (gây vòng lặp JSON và lệ lazy loading)
+        return submissions.stream().map(this::toSummary).collect(Collectors.toList());
     }
 
     // ── Private helpers ──────────────────────────────────────────────────
@@ -221,18 +226,29 @@ public class SubmissionService {
                         "Không tìm thấy bài nộp với ID: " + submissionId));
     }
 
-    private SubmissionStartResponse buildStartResponse(Submission sub, String examId) {
+    private SubmissionStartResponse buildStartResponse(Submission sub, Long examId, boolean isNew) {
         List<Answer> answers = answerRepository.findBySubmissionId(sub.getId());
-        ExamServiceClient.ExamQuestionsDto examQuestions = examServiceClient.getExamQuestions(examId);
-
-        return buildStartResponseWithQuestions(sub, null, examQuestions.getQuestions(), answers);
+        // Fetch cả exam detail khi resume — để có examTitle và durationMinutes trong response
+        ExamServiceClient.ExamDetailDto examDetail;
+        ExamServiceClient.ExamQuestionsDto examQuestions;
+        try {
+            examDetail = examServiceClient.getExamDetail(examId);
+            examQuestions = examServiceClient.getExamQuestions(examId);
+        } catch (Exception e) {
+            log.warn("Không thể lấy thông tin Exam Service khi resume: {}", e.getMessage());
+            examDetail = null;
+            examQuestions = null;
+        }
+        List<QuestionDto> questions = (examQuestions != null) ? examQuestions.getQuestions() : List.of();
+        return buildStartResponseWithQuestions(sub, examDetail, questions, answers, false);
     }
 
     private SubmissionStartResponse buildStartResponseWithQuestions(
             Submission sub,
             ExamServiceClient.ExamDetailDto examDetail,
             List<QuestionDto> questions,
-            List<Answer> currentAnswers) {
+            List<Answer> currentAnswers,
+            boolean isNew) {
 
         Map<String, AnswerOption> selectedMap = currentAnswers.stream()
                 .filter(a -> a.getSelectedOption() != null)
@@ -319,5 +335,21 @@ public class SubmissionService {
                 .submittedAt(sub.getSubmittedAt())
                 .answers(answerResults)
                 .build();
+    }   // ← đóng buildSubmitResponse
+
+    private SubmissionSummaryResponse toSummary(Submission sub) {
+        return SubmissionSummaryResponse.builder()
+                .id(sub.getId())
+                .examId(sub.getExamId())
+                .studentId(sub.getStudentId())
+                .status(sub.getStatus().name())
+                .score(sub.getScore())
+                .correctCount(sub.getCorrectCount())
+                .totalQuestions(sub.getTotalQuestions())
+                .startedAt(sub.getStartedAt())
+                .deadlineAt(sub.getDeadlineAt())
+                .submittedAt(sub.getSubmittedAt())
+                .build();
     }
 }
+

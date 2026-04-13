@@ -1,6 +1,7 @@
 package com.quizapp.submission.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -9,8 +10,9 @@ import lombok.Data;
 @Data
 public class StartExamRequest {
 
-    @NotBlank(message = "examId không được để trống")
-    private String examId;
+    /** ID bài thi (kiểu Long — khớp với Exam Service) */
+    @NotNull(message = "examId không được để trống")
+    private Long examId;
 
     @NotBlank(message = "studentId không được để trống")
     private String studentId;

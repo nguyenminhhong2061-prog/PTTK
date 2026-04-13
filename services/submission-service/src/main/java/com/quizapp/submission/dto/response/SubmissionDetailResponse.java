@@ -19,7 +19,7 @@ import java.util.List;
 public class SubmissionDetailResponse {
 
     private String id;
-    private String examId;
+    private Long examId;        // Long — khớp với Exam Service
     private String studentId;
     private String status;
     private Double score;

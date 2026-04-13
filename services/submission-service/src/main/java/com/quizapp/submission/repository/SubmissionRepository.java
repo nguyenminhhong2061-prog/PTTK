@@ -12,14 +12,14 @@ import java.util.Optional;
 public interface SubmissionRepository extends JpaRepository<Submission, String> {
 
     /** Kiểm tra học sinh đã có submission nào cho bài thi này chưa */
-    Optional<Submission> findByStudentIdAndExamId(String studentId, String examId);
+    Optional<Submission> findByStudentIdAndExamId(String studentId, Long examId);
 
     /** Lọc theo examId và status (Statistics Service dùng) */
-    List<Submission> findByExamIdAndStatus(String examId, SubmissionStatus status);
+    List<Submission> findByExamIdAndStatus(Long examId, SubmissionStatus status);
 
     /** Xem lịch sử làm bài của học sinh */
     List<Submission> findByStudentId(String studentId);
 
     /** Lấy tất cả submission theo examId */
-    List<Submission> findByExamId(String examId);
+    List<Submission> findByExamId(Long examId);
 }

@@ -18,7 +18,7 @@ import java.util.List;
 public class SubmissionStartResponse {
 
     private String submissionId;
-    private String examId;
+    private Long examId;        // Long — khớp với Exam Service
     private String examTitle;
     private String studentId;
     private String status;

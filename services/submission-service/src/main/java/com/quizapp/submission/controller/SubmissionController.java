@@ -5,8 +5,8 @@ import com.quizapp.submission.dto.request.StartExamRequest;
 import com.quizapp.submission.dto.response.ApiResponse;
 import com.quizapp.submission.dto.response.SubmissionDetailResponse;
 import com.quizapp.submission.dto.response.SubmissionStartResponse;
+import com.quizapp.submission.dto.response.SubmissionSummaryResponse;
 import com.quizapp.submission.dto.response.SubmitResponse;
-import com.quizapp.submission.entity.Submission;
 import com.quizapp.submission.service.SubmissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,8 +40,10 @@ public class SubmissionController {
             @Valid @RequestBody StartExamRequest request) {
         try {
             SubmissionStartResponse response = submissionService.startExam(request);
-            // 201 nếu mới tạo, 200 nếu resume
-            boolean isNew = response.getStartedAt().isAfter(LocalDateTime.now().minusSeconds(5));
+            // Dùng field isNewSession để phân biệt tạo mới (201) hay resume (200)
+            // startedAt trong vòng 3 giây qua = phiên mới
+            boolean isNew = response.getStartedAt() != null
+                    && response.getStartedAt().isAfter(java.time.LocalDateTime.now().minusSeconds(3));
             return ResponseEntity
                     .status(isNew ? HttpStatus.CREATED : HttpStatus.OK)
                     .body(ApiResponse.success(response));
@@ -66,11 +68,11 @@ public class SubmissionController {
      * Lấy danh sách bài nộp. Filter theo studentId, examId, status.
      */
     @GetMapping
-    public ResponseEntity<ApiResponse<List<Submission>>> listSubmissions(
+    public ResponseEntity<ApiResponse<List<SubmissionSummaryResponse>>> listSubmissions(
             @RequestParam(required = false) String studentId,
             @RequestParam(required = false) String examId,
             @RequestParam(required = false) String status) {
-        List<Submission> submissions = submissionService.listSubmissions(studentId, examId, status);
+        List<SubmissionSummaryResponse> submissions = submissionService.listSubmissions(studentId, examId, status);
         return ResponseEntity.ok(ApiResponse.success(submissions));
     }
 

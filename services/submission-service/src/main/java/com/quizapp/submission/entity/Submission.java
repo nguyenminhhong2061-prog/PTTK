@@ -1,5 +1,6 @@
 package com.quizapp.submission.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.quizapp.submission.enums.SubmissionStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,6 +22,7 @@ import java.util.UUID;
         columnNames = {"student_id", "exam_id"}
     )
 )
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})  // Tránh lỗi khi serialize Hibernate proxy
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
 public class Submission {
 
@@ -28,8 +30,8 @@ public class Submission {
     @Column(length = 36)
     private String id;
 
-    @Column(name = "exam_id", length = 36, nullable = false)
-    private String examId;
+    @Column(name = "exam_id", nullable = false)
+    private Long examId;
 
     @Column(name = "student_id", nullable = false)
     private String studentId;

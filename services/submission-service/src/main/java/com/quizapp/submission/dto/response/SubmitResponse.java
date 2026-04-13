@@ -18,7 +18,7 @@ import java.util.List;
 public class SubmitResponse {
 
     private String submissionId;
-    private String examId;
+    private Long examId;        // Long — khớp với Exam Service
     private String studentId;
     private Double score;
     private Integer correctCount;
