@@ -4,16 +4,6 @@
 
 services:
 
-  # ─── Frontend ─────────────────────────────────────────
-  frontend:
-    build: ./frontend
-    ports:
-      - "${FRONTEND_PORT:-3000}:3000"
-    depends_on:
-      - gateway
-    networks:
-      - app-network
-
   # ─── API Gateway (Nginx) ───────────────────────────────
   gateway:
     build: ./gateway
@@ -22,7 +12,6 @@ services:
     depends_on:
       - exam-service
       - submission-service
-      - statistics-service
     networks:
       - app-network
 
@@ -61,16 +50,6 @@ services:
         condition: service_healthy
       exam-service:
         condition: service_started
-    networks:
-      - app-network
-
-  # ─── Statistics Service (TV3) ──────────────────────────
-  statistics-service:
-    build: ./services/statistics-service
-    ports:
-      - "${STATISTICS_SERVICE_PORT:-5003}:8080"
-    environment:
-      SUBMISSION_SERVICE_URL: http://submission-service:8080
     networks:
       - app-network
 

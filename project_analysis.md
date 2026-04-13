@@ -26,7 +26,7 @@ Database:
 | TV | Phụ trách | Frontend |
 |----|-----------|----------|
 | **TV1** | Exam Service | Trang Giáo Viên (tạo đề, quản lý) |
-| **TV2 (BẠN)** | Submission Service | Trang Học Sinh (làm bài, xem kết quả) |
+| **TV2** | Submission Service | Trang Học Sinh (làm bài, xem kết quả) |
 | **TV3** | Statistics Service | Dashboard thống kê giáo viên |
 
 ---

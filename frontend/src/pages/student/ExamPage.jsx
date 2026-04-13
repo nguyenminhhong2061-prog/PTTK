@@ -54,7 +54,7 @@ export default function ExamPage() {
           const subRes = await getSubmissionByExam(user.id, examId);
           // Handle cả {data:[]} và {submissions:[]} và array trực tiếp
           const rawList = subRes.data || subRes.submissions || (Array.isArray(subRes) ? subRes : []);
-          const submitted = rawList.find(s => (s.status || '').toUpperCase() === 'SUBMITTED') || rawList[0];
+          const submitted = rawList.find(s => (s.status || '').toUpperCase() === 'SUBMITTED');
           if (submitted?.id) {
             navigate(`/student/result/${submitted.id}`, { replace: true });
             return;
@@ -118,6 +118,7 @@ export default function ExamPage() {
       setSubmitting(false);
       // Nếu đã nộp từ tab/device khác → redirect kết quả
       if (err.status === 409) {
+        // B\u00e0i \u0111\u00e3 \u0111\u01b0\u1ee3c n\u1ed9p t\u1eeb tab/device kh\u00e1c
         navigate(`/student/result/${submission.submissionId}`, { replace: true });
       } else {
         alert('❌ Lỗi khi nộp bài: ' + err.message);

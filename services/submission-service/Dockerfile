@@ -1,28 +1,29 @@
 # Submission Service — Dockerfile
-# Java 17 + Maven multi-stage build
-# Không cần cài Java/Maven trên máy host — Docker lo hết
+# Java 17 + Maven Wrapper (giống exam-service) — không cần cài Java/Maven trên máy host
 
 # ── Stage 1: Build ────────────────────────────────────────
-FROM maven:3.9-eclipse-temurin-17 AS builder
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+
 WORKDIR /app
 
-# Copy pom.xml trước để cache dependencies (tái dụng layer khi chỉ sửa code)
-COPY pom.xml .
-RUN mvn dependency:go-offline -q
+# Copy Maven Wrapper trước để cache layer
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline -q
 
 # Copy source và build
-COPY src ./src
-RUN mvn --version
-RUN mvn clean package -DskipTests || (echo "=== MAVEN FAILED with exit $? ===" && exit 1)
+COPY src/ src/
+RUN ./mvnw clean package -DskipTests -q
 
 # ── Stage 2: Runtime ──────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
+
 WORKDIR /app
 
 # Copy JAR từ stage build
-COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/target/*.jar /app/app.jar
 
 EXPOSE 8080
-
-# Chạy ứng dụng
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENV JAVA_OPTS=""
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]

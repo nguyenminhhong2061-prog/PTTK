@@ -14,15 +14,23 @@ export default function Timer({ deadlineAt, onExpire }) {
   useEffect(() => {
     if (!deadlineAt) return;
 
-    // Reset flag khi deadlineAt thay đổi (ví dụ: resume bài mới)
+    // Reset flags khi deadlineAt thay đổi
     expiredRef.current = false;
+    let isFirstTick = true; // Không auto-submit nếu đã hết giờ ngay từ đầu
 
     const tick = () => {
       const remaining = Math.floor((new Date(deadlineAt) - Date.now()) / 1000);
       const clamped = Math.max(0, remaining);
       setSeconds(clamped);
 
-      // Chỉ gọi onExpire đúng 1 lần
+      // Bỏ qua nếu hết giờ ngay từ tick đầu tiên
+      // (duration=0 hoặc resume sau khi deadline đã qua)
+      if (isFirstTick) {
+        isFirstTick = false;
+        if (clamped === 0) return; // Hiển thị 00:00 nhưng không auto-submit
+      }
+
+      // Chỉ gọi onExpire đúng 1 lần khi hết giờ thực sự
       if (clamped === 0 && onExpire && !expiredRef.current) {
         expiredRef.current = true;
         onExpire();
