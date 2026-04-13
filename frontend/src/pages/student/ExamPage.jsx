@@ -32,8 +32,10 @@ export default function ExamPage() {
     setError('');
     setRedirecting(false);
     try {
-      const res = await startExam(Number(examId), user.id);
-      const sub = res.data;
+      // examId là UUID string — KHÔNG convert sang Number
+      const res = await startExam(examId, user.id);
+      // Backend có thể wrap trong {data:...} hoặc trả về trực tiếp
+      const sub = res.data || res;
       setSubmission(sub);
       setQuestions(sub.questions || []);
 
@@ -50,8 +52,9 @@ export default function ExamPage() {
         setRedirecting(true);
         try {
           const subRes = await getSubmissionByExam(user.id, examId);
-          const subList = subRes.data || [];
-          const submitted = subList.find(s => s.status === 'SUBMITTED') || subList[0];
+          // Handle cả {data:[]} và {submissions:[]} và array trực tiếp
+          const rawList = subRes.data || subRes.submissions || (Array.isArray(subRes) ? subRes : []);
+          const submitted = rawList.find(s => (s.status || '').toUpperCase() === 'SUBMITTED') || rawList[0];
           if (submitted?.id) {
             navigate(`/student/result/${submitted.id}`, { replace: true });
             return;

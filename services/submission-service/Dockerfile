@@ -12,7 +12,8 @@ RUN mvn dependency:go-offline -q
 
 # Copy source và build
 COPY src ./src
-RUN mvn clean package -DskipTests -q
+RUN mvn --version
+RUN mvn clean package -DskipTests || (echo "=== MAVEN FAILED with exit $? ===" && exit 1)
 
 # ── Stage 2: Runtime ──────────────────────────────────────
 FROM eclipse-temurin:17-jre-alpine

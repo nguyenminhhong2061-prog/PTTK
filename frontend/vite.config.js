@@ -18,6 +18,12 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api-sub/, ''),
       },
+      // Proxy tất cả /api-stats/* → statistics-service (port 5003)
+      '/api-stats': {
+        target: 'http://localhost:5003',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api-stats/, ''),
+      },
     },
   },
 });

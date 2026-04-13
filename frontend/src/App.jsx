@@ -3,7 +3,8 @@ import HomePage from './pages/HomePage.jsx';
 import StudentDashboard from './pages/student/StudentDashboard.jsx';
 import ExamPage from './pages/student/ExamPage.jsx';
 import ResultPage from './pages/student/ResultPage.jsx';
-import TeacherPlaceholder from './pages/teacher/TeacherPlaceholder.jsx';
+import TeacherDashboard from './pages/teacher/TeacherDashboard.jsx';
+import ExamStatsPage from './pages/teacher/ExamStatsPage.jsx';
 
 /** Route bảo vệ: yêu cầu user đã đăng nhập đúng role */
 function ProtectedRoute({ children, role }) {
@@ -19,7 +20,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
 
-        {/* Student routes */}
+        {/* ── Student routes ── */}
         <Route path="/student" element={
           <ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>
         } />
@@ -30,9 +31,12 @@ export default function App() {
           <ProtectedRoute role="student"><ResultPage /></ProtectedRoute>
         } />
 
-        {/* Teacher placeholder */}
+        {/* ── Teacher routes ── */}
         <Route path="/teacher" element={
-          <ProtectedRoute role="teacher"><TeacherPlaceholder /></ProtectedRoute>
+          <ProtectedRoute role="teacher"><TeacherDashboard /></ProtectedRoute>
+        } />
+        <Route path="/teacher/exams/:examId/stats" element={
+          <ProtectedRoute role="teacher"><ExamStatsPage /></ProtectedRoute>
         } />
 
         {/* Fallback */}

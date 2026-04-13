@@ -4,6 +4,10 @@ import Navbar from '../../components/Navbar.jsx';
 import { getExams } from '../../api/examApi.js';
 import { getStudentSubmissions } from '../../api/submissionApi.js';
 
+// Helper dùng chung — normalize status (backend có thể trả về lowercase hoặc uppercase)
+const matchStatus = (sub, statusStr) =>
+  (sub?.status || '').toUpperCase() === statusStr.toUpperCase();
+
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const user = JSON.parse(sessionStorage.getItem('quizUser') || '{}');
@@ -24,19 +28,21 @@ export default function StudentDashboard() {
     setError('');
     try {
       const [examsRes, subRes] = await Promise.all([
-        getExams('PUBLISHED'),
+        getExams(null),                    // Load TẤT CẢ exam (cả draft/published/closed) — để build examMap
         getStudentSubmissions(user.id),
       ]);
 
-      const examList = examsRes.data || examsRes.exams || [];
-      const subList = subRes.data || subRes.submissions || [];
+      // Handle cả {data:[]} và {exams:[]} và array trực tiếp
+      const allExams  = examsRes.data || examsRes.exams || (Array.isArray(examsRes) ? examsRes : []);
+      const subList   = subRes.data || subRes.submissions || (Array.isArray(subRes) ? subRes : []);
 
-      setExams(examList);
+      // Chỉ hiển thị bài thi "published" trong tab bài thi có sẵn
+      setExams(allExams.filter(e => (e.status || '').toUpperCase() === 'PUBLISHED'));
       setSubmissions(subList);
 
-      // Build map for history tab
+      // Build map dùng cho history tab — key là cả id và string
       const map = {};
-      examList.forEach(e => { map[e.id] = e; });
+      allExams.forEach(e => { map[String(e.id)] = e; });
       setExamMap(map);
     } catch (err) {
       setError(err.message);
@@ -60,7 +66,7 @@ export default function StudentDashboard() {
     navigate(`/student/result/${submissionId}`);
   };
 
-  const submittedHistory = submissions.filter(s => s.status === 'SUBMITTED');
+  const submittedHistory = submissions.filter(s => matchStatus(s, 'SUBMITTED'));
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
@@ -98,8 +104,8 @@ export default function StudentDashboard() {
                   color="var(--accent)"
                 />
               )}
-              {submissions.find(s => s.status === 'IN_PROGRESS') && (
-                <StatPill label="Đang làm" value={submissions.filter(s => s.status === 'IN_PROGRESS').length} color="var(--warning)" />
+              {submissions.find(s => matchStatus(s, 'IN_PROGRESS')) && (
+                <StatPill label="Đang làm" value={submissions.filter(s => matchStatus(s, 'IN_PROGRESS')).length} color="var(--warning)" />
               )}
             </div>
           )}
@@ -162,10 +168,11 @@ export default function StudentDashboard() {
               <EmptyState icon="🏆" title="Chưa có lịch sử" desc="Hoàn thành bài thi để xem kết quả ở đây." />
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {submittedHistory
+                {[...submittedHistory]
                   .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
                   .map(sub => {
-                    const exam = examMap[sub.examId];
+                    // examMap fallback: dùng sub.examTitle nếu exam đã đóng và không có trong map
+                    const exam = examMap[String(sub.examId)];
                     return <HistoryCard key={sub.id} sub={sub} exam={exam} onView={() => handleViewResult(sub.id)} />;
                   })}
               </div>
@@ -180,8 +187,8 @@ export default function StudentDashboard() {
 /* ── Sub-components ── */
 
 function ExamCard({ exam, myStatus, onStart, onViewResult }) {
-  const submitted = myStatus?.status === 'SUBMITTED';
-  const inProgress = myStatus?.status === 'IN_PROGRESS';
+  const submitted  = matchStatus(myStatus, 'SUBMITTED');
+  const inProgress = matchStatus(myStatus, 'IN_PROGRESS');
 
   return (
     <div className="exam-card" style={{ animation: 'fadeIn 0.4s ease' }}>
@@ -251,7 +258,7 @@ function HistoryCard({ sub, exam, onView }) {
 
       {/* Info */}
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>{exam?.title || `Bài thi #${sub.examId}`}</div>
+        <div style={{ fontWeight: 600, marginBottom: 4 }}>{exam?.title || sub.examTitle || `Bài thi #${sub.examId}`}</div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
           <span>{sub.correctCount}/{sub.totalQuestions} câu đúng</span>
           <span>{date}</span>

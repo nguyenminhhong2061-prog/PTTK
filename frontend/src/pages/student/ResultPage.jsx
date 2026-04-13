@@ -15,9 +15,10 @@ export default function ResultPage() {
   const [scoreVisible, setScoreVisible] = useState(false);
 
   useEffect(() => {
-    if (state?.result?.data) {
-      // Đến từ ExamPage với state
-      setResult(state.result.data);
+    if (state?.result) {
+      // Đến từ ExamPage với state — result có thể là {data:{...}} hoặc object trực tiếp
+      const r = state.result?.data || state.result;
+      setResult(r);
       setLoading(false);
       setTimeout(() => setScoreVisible(true), 200);
     } else {
@@ -29,7 +30,8 @@ export default function ResultPage() {
   const fetchResult = async () => {
     try {
       const res = await getSubmission(submissionId);
-      setResult(res.data);
+      // Handle cả wrapped {data:{...}} và direct object
+      setResult(res.data || res);
       setTimeout(() => setScoreVisible(true), 200);
     } catch (err) {
       setError(err.message);
