@@ -1,4 +1,4 @@
-# exam-service
+# Exam-service
 
 Rename this to match your actual service name (e.g., user-service, order-service).
 
