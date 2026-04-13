@@ -1,34 +1,81 @@
 # Submission Service
 
-> **Phụ trách**: Thành viên 2
-
 ## Mô tả
 
-Submission Service quản lý toàn bộ quá trình học sinh làm bài thi: tạo phiên làm bài, lưu đáp án, nộp bài và chấm điểm tự động.
+**Submission Service** là service chịu trách nhiệm quản lý toàn bộ vòng đời làm bài thi của học sinh.
+
+### Nghiệp vụ (Business Domain)
+
+Service này thuộc lĩnh vực **quản lý phiên làm bài thi** (_exam session management_). Nó xử lý mọi hoạt động phát sinh sau khi bài thi đã được giáo viên công bố, bao gồm: học sinh bắt đầu thi, lưu tiến trình, nộp bài và nhận điểm.
+
+### Dữ liệu sở hữu (Data Ownership)
+
+Service này là **nguồn sự thật duy nhất** (_single source of truth_) cho hai loại dữ liệu sau:
+
+| Bảng         | Mô tả                                                                           |
+|--------------|---------------------------------------------------------------------------------|
+| `submissions`| Phiên làm bài của học sinh: trạng thái, thời gian bắt đầu/deadline, điểm số    |
+| `answers`    | Đáp án của học sinh cho từng câu hỏi: lựa chọn đã chọn, kết quả đúng/sai       |
+
+Service **không sở hữu** thông tin bài thi hay câu hỏi — những dữ liệu đó thuộc về **Exam Service** và chỉ được truy vấn khi cần.
+
+### Các nghiệp vụ chính (Operations)
+
+- **Bắt đầu thi**: Tạo phiên làm bài mới cho học sinh, hoặc resume phiên đang dở. Lấy danh sách câu hỏi (không có đáp án) từ Exam Service.
+- **Lưu đáp án tạm**: Cho phép học sinh lưu tiến trình trong quá trình làm bài (auto-save). Dữ liệu được cập nhật từng phần theo từng câu hỏi.
+- **Nộp bài & chấm điểm**: Khi học sinh nộp bài, service lấy đáp án đúng từ Exam Service, so sánh với lựa chọn của học sinh, tính điểm và cập nhật trạng thái `SUBMITTED`.
+- **Truy vấn kết quả**: Cho phép xem chi tiết bài nộp (kèm đáp án đúng/sai) sau khi đã nộp bài.
+
+---
 
 ## Tech Stack
 
-| Component  | Lựa chọn                         |
-|------------|----------------------------------|
-| Language   | Java 17                          |
-| Framework  | Spring Boot 3.2                  |
-| ORM        | Spring Data JPA + Hibernate      |
-| Database   | MySQL 8.0                        |
-| HTTP Client| Spring WebFlux WebClient         |
-| Build      | Maven 3.9                        |
+| Component   | Lựa chọn                        |
+|-------------|----------------------------------|
+| Language    | Java 17                          |
+| Framework   | Spring Boot 3.2                  |
+| ORM         | Spring Data JPA + Hibernate      |
+| Database    | MySQL 8.0                        |
+| HTTP Client | Spring WebFlux WebClient         |
+| Build       | Maven 3.9                        |
+
+---
 
 ## API Endpoints
 
-| Method | Endpoint                          | Mô tả                           |
-|--------|-----------------------------------|---------------------------------|
-| GET    | `/health`                         | Health check                    |
-| POST   | `/submissions`                    | Bắt đầu làm bài (tạo phiên)    |
-| GET    | `/submissions`                    | Lấy danh sách bài nộp          |
-| GET    | `/submissions/{id}`               | Xem chi tiết bài nộp           |
-| PUT    | `/submissions/{id}/answers`       | Lưu đáp án tạm thời            |
-| POST   | `/submissions/{id}/submit`        | Nộp bài và chấm điểm tự động   |
+Tất cả response đều được bọc trong `ApiResponse<T>`:
+```json
+{ "success": true, "data": { ... } }
+```
+
+| Method | Endpoint                          | Mô tả                                          |
+|--------|-----------------------------------|------------------------------------------------|
+| GET    | `/health`                         | Health   check                                   |
+| POST   | `/submissions`                    | Bắt đầu làm bài (tạo mới hoặc resume)         |
+| GET    | `/submissions`                    | Lấy danh sách bài nộp (filter theo query param)|
+| GET    | `/submissions/{id}`               | Xem chi tiết bài nộp                           |
+| PUT    | `/submissions/{id}/answers`       | Lưu đáp án tạm thời                           |
+| POST   | `/submissions/{id}/submit`        | Nộp bài và chấm điểm tự động                   |
+
+**Query params của `GET /submissions`:**
+- `studentId` — lọc theo học sinh
+- `examId` — lọc theo bài thi
+- `status` — lọc theo trạng thái (`IN_PROGRESS`, `SUBMITTED`)
 
 > Full API spec: [`docs/api-specs/submission-service.yaml`](../../docs/api-specs/submission-service.yaml)
+
+---
+
+## Chạy Cục Bộ
+
+```bash
+# Với Docker Compose (khuyến nghị — cần Exam Service + MySQL chạy trước)
+docker compose up submission-service --build
+
+# Kiểm tra health
+curl http://localhost:5002/health
+
+---
 
 ## Cấu Trúc Thư Mục
 
@@ -41,61 +88,49 @@ submission-service/
     ├── java/com/quizapp/submission/
     │   ├── SubmissionServiceApplication.java
     │   ├── client/
-    │   │   └── ExamServiceClient.java    ← Gọi Exam Service
+    │   │   └── ExamServiceClient.java        ← Gọi Exam Service qua WebClient
     │   ├── config/
-    │   │   └── WebClientConfig.java
+    │   │   └── WebClientConfig.java          ← Cấu hình bean WebClient
     │   ├── controller/
-    │   │   └── SubmissionController.java
+    │   │   └── SubmissionController.java     ← REST endpoints (/submissions/*)
     │   ├── dto/
     │   │   ├── request/
-    │   │   │   ├── StartExamRequest.java
-    │   │   │   └── SaveAnswersRequest.java
+    │   │   │   ├── StartExamRequest.java     ← Body cho POST /submissions
+    │   │   │   └── SaveAnswersRequest.java   ← Body cho PUT /answers
     │   │   └── response/
-    │   │       ├── ApiResponse.java
-    │   │       ├── SubmissionStartResponse.java
-    │   │       ├── SubmissionDetailResponse.java
-    │   │       └── SubmitResponse.java
+    │   │       ├── ApiResponse.java          ← Wrapper chung cho mọi response
+    │   │       ├── SubmissionStartResponse.java   ← Response bắt đầu thi
+    │   │       ├── SubmissionSummaryResponse.java ← Response danh sách bài nộp
+    │   │       ├── SubmissionDetailResponse.java  ← Response chi tiết bài nộp
+    │   │       └── SubmitResponse.java       ← Response sau khi nộp bài + điểm
     │   ├── entity/
-    │   │   ├── Submission.java
-    │   │   └── Answer.java
+    │   │   ├── Submission.java               ← Entity phiên làm bài
+    │   │   └── Answer.java                   ← Entity đáp án từng câu
     │   ├── enums/
-    │   │   ├── AnswerOption.java
-    │   │   └── SubmissionStatus.java
+    │   │   ├── AnswerOption.java             ← Enum A/B/C/D
+    │   │   └── SubmissionStatus.java         ← Enum IN_PROGRESS / SUBMITTED
     │   ├── repository/
     │   │   ├── SubmissionRepository.java
     │   │   └── AnswerRepository.java
     │   └── service/
-    │       ├── SubmissionService.java
-    │       └── GradingService.java
+    │       ├── SubmissionService.java        ← Business logic chính
+    │       └── GradingService.java           ← Logic chấm điểm
     └── resources/
         └── application.properties
 ```
 
-## Giao Tiếp Nội Bộ
-
-Service này gọi **Exam Service** trong 2 trường hợp:
-1. Khi học sinh **bắt đầu làm bài** → lấy câu hỏi (không có đáp án)
-2. Khi học sinh **nộp bài** → lấy đáp án đúng để chấm điểm
-
-URL nội bộ Docker: `http://exam-service:8080`
+---
 
 ## Biến Môi Trường
 
-| Biến                | Mô tả                       | Mặc định              |
-|---------------------|-----------------------------|-----------------------|
-| `DB_HOST`           | Hostname MySQL              | `submission-db`       |
-| `DB_PORT`           | Port MySQL                  | `3306`                |
-| `DB_NAME`           | Tên database                | `submission_db`       |
-| `DB_USER`           | Username MySQL              | `root`                |
-| `DB_PASSWORD`       | Password MySQL              | `changeme`            |
-| `EXAM_SERVICE_URL`  | URL của Exam Service        | `http://exam-service:8080` |
+| Biến                | Mô tả                        | Mặc định                   |
+|---------------------|------------------------------|----------------------------|
+| `DB_HOST`           | Hostname MySQL               | `submission-db`            |
+| `DB_PORT`           | Port MySQL                   | `3306`                     |
+| `DB_NAME`           | Tên database                 | `submission_db`            |
+| `DB_USER`           | Username MySQL               | `root`                     |
+| `DB_PASSWORD`       | Password MySQL               | `changeme`                 |
+| `EXAM_SERVICE_URL`  | URL của Exam Service         | `http://exam-service:8080` |
 
-## Chạy Cục Bộ
 
-```bash
-# Với Docker Compose (khuyến nghị — cần Exam Service + MySQL chạy trước)
-docker compose up submission-service --build
 
-# Kiểm tra health
-curl http://localhost:5002/health
-```
