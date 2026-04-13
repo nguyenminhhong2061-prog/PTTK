@@ -91,7 +91,7 @@ public class SubmissionService {
         List<Answer> answers = examQuestions.getQuestions().stream()
                 .map(q -> Answer.builder()
                         .submission(submission)
-                        .questionId(q.getQuestionId())
+                        .questionId(String.valueOf(q.getQuestionId()))  // Long → String
                         .orderIndex(q.getOrderIndex())
                         .selectedOption(null)
                         .isCorrect(null)
@@ -192,7 +192,25 @@ public class SubmissionService {
     public SubmissionDetailResponse getById(String submissionId) {
         Submission submission = getSubmissionOrThrow(submissionId);
         List<Answer> answers = answerRepository.findBySubmissionId(submissionId);
-        return buildDetailResponse(submission, answers);
+
+        // Fetch correct answers từ Exam Service (nếu đã nộp bài) để hiển thị đáp án đúng
+        Map<String, String> correctAnswerMap = new java.util.HashMap<>();
+        if (submission.getStatus() == SubmissionStatus.SUBMITTED) {
+            try {
+                ExamServiceClient.ExamQuestionsDto examWithAnswers =
+                        examServiceClient.getExamQuestionsWithAnswers(submission.getExamId());
+                if (examWithAnswers != null && examWithAnswers.getQuestions() != null) {
+                    correctAnswerMap = examWithAnswers.getQuestions().stream()
+                            .filter(q -> q.getCorrectAnswer() != null)
+                            .collect(Collectors.toMap(
+                                    q -> String.valueOf(q.getQuestionId()),
+                                    ExamServiceClient.QuestionDto::getCorrectAnswer));
+                }
+            } catch (Exception e) {
+                log.warn("Không thể lấy đáp án đúng khi truy vấn submission {}: {}", submissionId, e.getMessage());
+            }
+        }
+        return buildDetailResponse(submission, answers, correctAnswerMap);
     }
 
     public List<SubmissionSummaryResponse> listSubmissions(String studentId, String examId, String status) {
@@ -216,6 +234,25 @@ public class SubmissionService {
         }
         // Đổi sang DTO — tránh serialize entity trực tiếp (gây vòng lặp JSON và lệ lazy loading)
         return submissions.stream().map(this::toSummary).collect(Collectors.toList());
+    }
+
+    /**
+     * Resume bài thi hiện tại khi phát hiện duplicate submission (DataIntegrityViolationException).
+     * Được gọi từ controller khi duplicate key error xảy ra thay vì trả về lỗi 503.
+     */
+    @Transactional(readOnly = true)
+    public SubmissionStartResponse resumeExistingSubmission(Long examId, String studentId) {
+        Submission sub = submissionRepository
+                .findByStudentIdAndExamId(studentId, examId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Không tìm thấy bài nộp cho học sinh " + studentId));
+
+        if (sub.getStatus() == SubmissionStatus.SUBMITTED) {
+            throw new IllegalStateException("Bạn đã nộp bài thi này rồi. Không thể làm lại.");
+        }
+
+        log.info("Auto-resume submission {} for student {} on exam {}", sub.getId(), studentId, examId);
+        return buildStartResponse(sub, examId, false);
     }
 
     // ── Private helpers ──────────────────────────────────────────────────
@@ -256,14 +293,14 @@ public class SubmissionService {
 
         List<SubmissionStartResponse.QuestionItem> questionItems = questions.stream()
                 .map(q -> SubmissionStartResponse.QuestionItem.builder()
-                        .questionId(q.getQuestionId())
+                        .questionId(String.valueOf(q.getQuestionId()))  // Long → String
                         .orderIndex(q.getOrderIndex())
                         .content(q.getContent())
                         .optionA(q.getOptionA())
                         .optionB(q.getOptionB())
                         .optionC(q.getOptionC())
                         .optionD(q.getOptionD())
-                        .selectedOption(selectedMap.get(q.getQuestionId()))
+                        .selectedOption(selectedMap.get(String.valueOf(q.getQuestionId())))  // Long → String
                         .build())
                 .collect(Collectors.toList());
 
@@ -281,13 +318,15 @@ public class SubmissionService {
                 .build();
     }
 
-    private SubmissionDetailResponse buildDetailResponse(Submission sub, List<Answer> answers) {
+    private SubmissionDetailResponse buildDetailResponse(Submission sub, List<Answer> answers, Map<String, String> correctAnswerMap) {
+        boolean isSubmitted = sub.getStatus() == SubmissionStatus.SUBMITTED;
         List<SubmissionDetailResponse.AnswerDetail> answerDetails = answers.stream()
                 .map(a -> SubmissionDetailResponse.AnswerDetail.builder()
                         .questionId(a.getQuestionId())
                         .orderIndex(a.getOrderIndex())
                         .selectedOption(a.getSelectedOption())
-                        .isCorrect(sub.getStatus() == SubmissionStatus.SUBMITTED ? a.getIsCorrect() : null)
+                        .isCorrect(isSubmitted ? a.getIsCorrect() : null)
+                        .correctAnswer(isSubmitted ? correctAnswerMap.get(a.getQuestionId()) : null)
                         .build())
                 .collect(Collectors.toList());
 
@@ -312,7 +351,9 @@ public class SubmissionService {
             List<QuestionDto> questions) {
 
         Map<String, String> correctAnswerMap = questions.stream()
-                .collect(Collectors.toMap(QuestionDto::getQuestionId, QuestionDto::getCorrectAnswer));
+                .collect(Collectors.toMap(
+                        q -> String.valueOf(q.getQuestionId()),          // Long → String
+                        q -> q.getCorrectAnswer() != null ? q.getCorrectAnswer() : ""));
 
         List<SubmitResponse.AnswerResult> answerResults = result.getGradedAnswers().stream()
                 .map(a -> SubmitResponse.AnswerResult.builder()

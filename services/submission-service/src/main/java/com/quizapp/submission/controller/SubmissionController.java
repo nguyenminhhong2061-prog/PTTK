@@ -55,6 +55,21 @@ public class SubmissionController {
             // 400 Bad Request — bài thi không hợp lệ
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Duplicate submission (race condition hoặc session cũ) — resume bài thi hiện tại
+            log.warn("Duplicate submission for student={} exam={}, switching to resume mode",
+                    request.getStudentId(), request.getExamId());
+            try {
+                SubmissionStartResponse resumed = submissionService.resumeExistingSubmission(
+                        request.getExamId(), request.getStudentId());
+                return ResponseEntity.ok(ApiResponse.success(resumed));
+            } catch (IllegalStateException alreadySubmitted) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error(alreadySubmitted.getMessage()));
+            } catch (Exception ex) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("Bài thi đang xử lý, vui lòng thử lại sau."));
+            }
         } catch (RuntimeException e) {
             // 503 — không kết nối được Exam Service
             log.error("Lỗi khi bắt đầu làm bài: {}", e.getMessage());

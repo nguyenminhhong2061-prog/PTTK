@@ -27,7 +27,9 @@ public class GradingService {
     public GradingResult grade(List<Answer> studentAnswers, List<QuestionDto> correctQuestions) {
         // Map questionId → correctAnswer (A/B/C/D)
         Map<String, String> correctAnswerMap = correctQuestions.stream()
-                .collect(Collectors.toMap(QuestionDto::getQuestionId, QuestionDto::getCorrectAnswer));
+                .collect(Collectors.toMap(
+                        q -> String.valueOf(q.getQuestionId()),
+                        q -> q.getCorrectAnswer() != null ? q.getCorrectAnswer() : ""));
 
         int correctCount = 0;
         for (Answer answer : studentAnswers) {

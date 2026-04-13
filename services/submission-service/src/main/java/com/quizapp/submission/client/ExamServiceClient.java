@@ -89,7 +89,7 @@ public class ExamServiceClient {
     @Data
     @NoArgsConstructor
     public static class QuestionDto {
-        private String questionId;
+        private Long questionId;
         private Integer orderIndex;
         private String content;
         private String optionA;

@@ -19,7 +19,11 @@ export default function Timer({ deadlineAt, onExpire }) {
     let isFirstTick = true; // Không auto-submit nếu đã hết giờ ngay từ đầu
 
     const tick = () => {
-      const remaining = Math.floor((new Date(deadlineAt) - Date.now()) / 1000);
+      // Thêm 'Z' để đảm bảo chuỗi ISO từ server (UTC, không có timezone suffix)
+      // được parse đúng là UTC — tránh browser hiểu là giờ địa phương (UTC+7)
+      // khiến deadline bị tính là 7 tiếng trước hiện tại → auto-submit ngay lập tức.
+      const deadlineUTC = deadlineAt.endsWith('Z') ? deadlineAt : deadlineAt + 'Z';
+      const remaining = Math.floor((new Date(deadlineUTC) - Date.now()) / 1000);
       const clamped = Math.max(0, remaining);
       setSeconds(clamped);
 
