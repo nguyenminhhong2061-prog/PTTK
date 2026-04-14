@@ -398,8 +398,6 @@ flowchart TD
 
 ---
 
-## Phụ Lục — Phân Công Công Việc Nhóm
-
 ### Sơ đồ kiến trúc tổng thể
 
 ```mermaid
@@ -413,37 +411,4 @@ graph LR
     SB --> DB2[(DB Submission\nMySQL :3307)]
     SC -.->|gọi API| SB
     SB -.->|gọi API| SA
-```
-
-### Phân công theo thành viên
-
-| Thành viên | Phụ trách | Công việc chính |
-|---|---|---|
-| **Thành viên 1** | Exam Service + API Gateway | Implement CRUD câu hỏi, xem, tạo, cập nhật bài thi, công bố bài thi; xây dựng giao diện giáo viên ( trang tạo câu hỏi, bài thi)|
-| **Thành viên 2** | Submission Service + Frontend | Implement tạo phiên làm bài, lưu đáp án, nộp bài và chấm điểm tự động; xây dựng giao diện học sinh |
-| **Thành viên 3** | Statistics Service + Frontend | Implement API thống kê và báo cáo; xây dựng giao diện giáo viên (dashboard thống kê) |
-
-### Thứ tự ưu tiên triển khai (theo phase)
-
-```
-Phase 1 — Nền tảng (tất cả cùng làm trước):
-  ├── Thiết kế DB schema cho từng service
-  ├── Implement GET /health cho tất cả service
-  └── Cấu hình docker-compose.yml với 3 service + DB
-
-Phase 2 — Core API:
-  ├── [TV1] Exam Service: CRUD /questions và /exams
-  ├── [TV2] Submission Service: POST /submissions, PUT answers, POST submit
-  └── [TV3] Statistics Service: GET /statistics/exams/{id}
-
-Phase 3 — Tích hợp & Frontend:
-  ├── [TV1] Cấu hình Gateway routing
-  ├── [TV2] Frontend — trang học sinh làm bài
-  ├── [TV3] Frontend — dashboard thống kê giáo viên
-  └── [TẤT CẢ] Test end-to-end với docker compose up --build
-
-Phase 4 — Hoàn thiện:
-  ├── Cập nhật README.md và readme.md từng service
-  ├── Cập nhật OpenAPI specs
-  └── Kiểm tra Submission Checklist
 ```
