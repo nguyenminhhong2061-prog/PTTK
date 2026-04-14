@@ -6,9 +6,9 @@ Hệ thống thi trắc nghiệm online theo kiến trúc microservices.
 
 | Name | Student ID | Role | Contribution |
 |------|------------|------|-------------|
-| Nguyễn Minh Hồng | B21DCCN400 | TV1 | Exam Service (question bank, exam management) |
+| Nguyễn Minh Hồng | B21DCCN400 | TV1 | Exam Service (question bank, exam management) + analysis and design + architecture |
 | Phùng Trung Kiên | B22DCCN433 | TV2 | Submission Service (exam session, grading) + analysis and design + architecture |
-| Kim Duy Hưng | B22DCCN409 | TV3 | Statistics Service + Teacher analytics dashboard |
+| Kim Duy Hưng | B22DCCN409 | TV3 | Statistics Service + Teacher analytics dashboard + analysis and design + architecture |
 
 ## Business Scope
 
