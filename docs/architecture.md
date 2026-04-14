@@ -1,8 +1,5 @@
 # Kiến Trúc Hệ Thống — Hệ Thống Thi Trắc Nghiệm Online
 
-> Tài liệu này được hoàn thành **sau** [Phân Tích và Thiết Kế](analysis-and-design.md).
-> Dựa trên các Service Candidate và Yêu Cầu Phi Chức Năng đã xác định, lựa chọn các pattern kiến trúc phù hợp và thiết kế kiến trúc triển khai.
-
 **Tài liệu tham khảo:**
 1. *Service-Oriented Architecture: Analysis and Design for Services and Microservices* — Thomas Erl (2nd Edition)
 2. *Microservices Patterns: With Examples in Java* — Chris Richardson
@@ -35,7 +32,7 @@ Lựa chọn pattern dựa trên kết quả phân tích nghiệp vụ và yêu 
 |---|---|---|---|
 | **Frontend** | Giao diện người dùng — trang làm bài cho học sinh, dashboard thống kê cho giáo viên | React + Vite (hoặc Vue.js) | 3000 |
 | **API Gateway** | Điểm vào duy nhất — routing request đến đúng service, xử lý CORS | Nginx (reverse proxy) | 8080 |
-| **Exam Service** | Quản lý câu hỏi và bài thi — CRUD questions, CRUD exams, công bố/đóng bài thi | Java 17 + Spring Boot 3 + Spring Data JPA | 5001 |
+| **Exam Service** | Quản lý câu hỏi và bài thi — CRUD questions, xem,tạo, cập nhật bài thi, công bố/đóng bài thi | Java 17 + Spring Boot 3 + Spring Data JPA | 5001 |
 | **Submission Service** | Quản lý phiên làm bài — tạo session, lưu đáp án, nộp bài, chấm điểm tự động | Java 17 + Spring Boot 3 + Spring Data JPA | 5002 |
 | **Statistics Service** | Tổng hợp và báo cáo — thống kê bài thi, phân tích câu hỏi, bảng điểm | Java 17 + Spring Boot 3 + Spring WebClient | 5003 |
 | **Database Exam** | Lưu trữ câu hỏi và bài thi | MySQL 8.0 | 3306 |
