@@ -7,5 +7,6 @@ package com.quizapp.submission.enums;
  */
 public enum SubmissionStatus {
     IN_PROGRESS,
+    GRADING,
     SUBMITTED
 }

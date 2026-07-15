@@ -7,6 +7,7 @@ import com.quizapp.submission.dto.response.SubmissionDetailResponse;
 import com.quizapp.submission.dto.response.SubmissionStartResponse;
 import com.quizapp.submission.dto.response.SubmissionSummaryResponse;
 import com.quizapp.submission.dto.response.SubmitResponse;
+import com.quizapp.submission.saga.SubmissionSagaOrchestrator;
 import com.quizapp.submission.service.SubmissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class SubmissionController {
 
     private final SubmissionService submissionService;
+    private final SubmissionSagaOrchestrator submissionSagaOrchestrator;
 
     /**
      * POST /submissions
@@ -132,14 +134,14 @@ public class SubmissionController {
 
     /**
      * POST /submissions/{submissionId}/submit
-     * Nộp bài và chấm điểm tự động.
+     * Nộp bài và chấm điểm tự động thông qua Saga Orchestrator.
      */
     @PostMapping("/{submissionId}/submit")
     public ResponseEntity<ApiResponse<SubmitResponse>> submitExam(
             @PathVariable String submissionId,
             @RequestBody(required = false) SaveAnswersRequest lastAnswers) {
         try {
-            SubmitResponse response = submissionService.submit(submissionId, lastAnswers);
+            SubmitResponse response = submissionSagaOrchestrator.executeSaga(submissionId, lastAnswers);
             return ResponseEntity.ok(ApiResponse.success("Nộp bài thành công!", response));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -147,10 +149,10 @@ public class SubmissionController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ApiResponse.error(e.getMessage()));
-        } catch (RuntimeException e) {
-            log.error("Lỗi khi nộp bài {}: {}", submissionId, e.getMessage());
+        } catch (Exception e) {
+            log.error("Lỗi khi nộp bài thi cho submission {} qua Saga: {}", submissionId, e.getMessage());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                    .body(ApiResponse.error(e.getMessage()));
+                    .body(ApiResponse.error("Hệ thống chấm điểm đang bận hoặc gặp sự cố. Trạng thái bài thi đã được khôi phục. Vui lòng thử lại sau."));
         }
     }
 }
