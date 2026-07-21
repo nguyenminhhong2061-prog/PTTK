@@ -138,17 +138,6 @@ public class SubmissionService {
 
     // ── Nộp bài & chấm điểm ─────────────────────────────────────────────
 
-    /**
-     * @deprecated Phương thức này đã bị thay thế bởi {@link com.quizapp.submission.saga.SubmissionSagaOrchestrator#executeSaga}.
-     * Không sử dụng method này — nó thiếu Saga pattern, không có compensation/rollback,
-     * và không tích hợp với Circuit Breaker của TV2.
-     *
-     * Controller ({@link com.quizapp.submission.controller.SubmissionController}) đã chuyển sang
-     * dùng {@code submissionSagaOrchestrator.executeSaga()} cho endpoint POST /submit.
-     *
-     * Method này giữ lại để tham khảo và tránh breaking change trong các test cũ.
-     */
-    @Deprecated(since = "saga-refactor", forRemoval = true)
     @Transactional
     public SubmitResponse submit(String submissionId, SaveAnswersRequest lastAnswers) {
         Submission submission = getSubmissionOrThrow(submissionId);
