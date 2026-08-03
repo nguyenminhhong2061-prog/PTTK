@@ -15,6 +15,24 @@ services:
     networks:
       - app-network
 
+  # ─── RabbitMQ — Pattern 3: Outbox + Event-Driven ───────
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"     # AMQP protocol
+      - "${RABBITMQ_UI_PORT:-15672}:15672"     # Management UI (http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-changeme}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - app-network
+
   # ─── Exam Service (TV1) ────────────────────────────────
   exam-service:
     build: ./services/exam-service
@@ -45,11 +63,17 @@ services:
       DB_USER: ${DB_USER:-root}
       DB_PASSWORD: ${DB_PASSWORD:-changeme}
       EXAM_SERVICE_URL: http://exam-service:8080
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-changeme}
     depends_on:
       submission-db:
         condition: service_healthy
       exam-service:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -100,8 +124,13 @@ services:
       - "${STATISTICS_SERVICE_PORT:-5003}:8080"
     environment:
       SUBMISSION_SERVICE_URL: http://submission-service:8080
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASS: ${RABBITMQ_PASS:-changeme}
     depends_on:
       - submission-service
+      - rabbitmq
     networks:
       - app-network
 
