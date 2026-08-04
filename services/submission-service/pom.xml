@@ -61,6 +61,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- RabbitMQ — Pattern 3: Outbox + Event-Driven (TV3) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <!-- Lombok (giảm boilerplate code) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -73,19 +79,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-        </dependency>
-
-        <!-- ── Resilience4j — Circuit Breaker / Retry / TimeLimiter ──────── -->
-        <!-- TV2: Tích hợp resilience layer cho ExamServiceClient             -->
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.2.0</version>
-        </dependency>
-        <!-- AOP bắt buộc để @CircuitBreaker / @Retry annotation hoạt động   -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
     </dependencies>
 

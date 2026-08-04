@@ -2,7 +2,6 @@ package com.quizapp.submission.saga.step;
 
 import com.quizapp.submission.client.ExamServiceClient;
 import com.quizapp.submission.client.ExamServiceClient.ExamQuestionsDto;
-import com.quizapp.submission.exception.ExamServiceUnavailableException;
 import com.quizapp.submission.saga.SagaStep;
 import com.quizapp.submission.saga.SubmissionSagaContext;
 import lombok.RequiredArgsConstructor;
@@ -21,16 +20,8 @@ public class FetchAnswersStep implements SagaStep<SubmissionSagaContext, Void> {
         Long examId = context.getSubmission().getExamId();
         log.info("Saga Execute: Gọi Exam Service lấy đáp án đúng cho exam ID {}", examId);
         ExamQuestionsDto examQuestions = examServiceClient.getExamQuestionsWithAnswers(examId);
-
-        // Nếu Exam Service trả về body rỗng (không ném exception nhưng data không hợp lệ)
-        // → dùng ExamServiceUnavailableException để Orchestrator nhận ra và chạy compensation.
-        // Không dùng RuntimeException thô vì Orchestrator sẽ wrap thành SagaExecutionException
-        // thay vì trả 503 + rollback IN_PROGRESS đúng cách.
-        if (examQuestions == null || examQuestions.getQuestions() == null
-                || examQuestions.getQuestions().isEmpty()) {
-            throw new ExamServiceUnavailableException(
-                    "Exam Service trả về danh sách câu hỏi rỗng hoặc không hợp lệ cho đề thi " + examId
-                    + ". Không thể chấm điểm. Trạng thái bài thi đã được khôi phục.");
+        if (examQuestions == null || examQuestions.getQuestions() == null) {
+            throw new RuntimeException("Đáp án trả về từ Exam Service trống hoặc không hợp lệ.");
         }
         context.setExamQuestions(examQuestions);
         return null;

@@ -1,5 +1,6 @@
 package com.quizapp.submission.saga.step;
 
+import com.quizapp.submission.dto.event.ExamSubmittedEvent;
 import com.quizapp.submission.dto.request.SaveAnswersRequest;
 import com.quizapp.submission.dto.response.SubmitResponse;
 import com.quizapp.submission.client.ExamServiceClient.QuestionDto;
@@ -11,6 +12,8 @@ import com.quizapp.submission.repository.SubmissionRepository;
 import com.quizapp.submission.saga.SagaStep;
 import com.quizapp.submission.saga.SubmissionSagaContext;
 import com.quizapp.submission.service.GradingService;
+import com.quizapp.submission.dto.event.ExamSubmittedEvent;
+import com.quizapp.submission.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -29,7 +32,7 @@ public class GradeAndSaveStep implements SagaStep<SubmissionSagaContext, Void> {
     private final SubmissionRepository submissionRepository;
     private final AnswerRepository answerRepository;
     private final GradingService gradingService;
-
+    private final OutboxService outboxService;
     @Override
     @Transactional
     public Void execute(SubmissionSagaContext context) {
@@ -77,9 +80,18 @@ public class GradeAndSaveStep implements SagaStep<SubmissionSagaContext, Void> {
         SubmitResponse submitResponse = buildSubmitResponse(submission, result, questions);
         context.setSubmitResponse(submitResponse);
 
-        // 6. Nơi dành cho TV3 tích hợp Outbox Event
-        // TODO: TV3 sẽ viết code insert event vào bảng outbox tại đây
-        // outboxService.saveEvent(new OutboxEvent(...));
+        // 6. Tích hợp Outbox Event
+        ExamSubmittedEvent event = ExamSubmittedEvent.builder()
+            .submissionId(submission.getId())
+            .examId(submission.getExamId())
+            .studentId(submission.getStudentId())
+            .score(submission.getScore())
+            .correctCount(submission.getCorrectCount())
+            .totalQuestions(submission.getTotalQuestions())
+            .submittedAt(submission.getSubmittedAt())
+            .build();
+        outboxService.saveEvent("ExamSubmitted", submission.getId(), event);
+
         log.info("Saga Execute: Lưu điểm thành công cho submission {}: Score = {}", submissionId, result.getScore());
 
         return null;
