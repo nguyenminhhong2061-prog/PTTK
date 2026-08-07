@@ -1,0 +1,4 @@
+services:
+  gateway:
+    volumes:
+      - ./gateway/tests/nginx.baseline.conf:/etc/nginx/nginx.conf:ro

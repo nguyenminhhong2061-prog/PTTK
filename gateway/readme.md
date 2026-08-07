@@ -1,44 +1,35 @@
 # API Gateway
 
-## Overview
+Nginx is the public entry point on `http://localhost:8080`. It handles CORS, strips the `/api` prefix, and routes requests through the Docker network.
 
-The API Gateway serves as the single entry point for all client requests. It routes incoming requests to the appropriate backend microservice.
+| External path | Internal target |
+|---|---|
+| `/api/questions/*` | `http://exam-service:8080/questions/*` |
+| `/api/exams/*` | `http://exam-service:8080/exams/*` |
+| `/api/submissions/*` | `http://submission-service:8080/submissions/*` |
+| `/api/statistics/*` | `http://statistics-service:8080/statistics/*` |
+| `/health` | Gateway-local health response |
 
-## Responsibilities
+## Submit protection
 
-- **Request routing**: Forward requests to the correct service
-- **Load balancing**: Distribute traffic (if applicable)
-- **Authentication**: Validate tokens/credentials (optional)
-- **Rate limiting**: Protect services from overload (optional)
-- **CORS handling**: Allow frontend cross-origin requests
-- **Request/Response transformation**: Modify headers, paths as needed
+`/api/submissions/{submissionId}/submit` has a dedicated policy:
 
-## Tech Stack
+- sustained rate: 10 requests/second per client IP;
+- burst capacity: 20 requests with `nodelay`;
+- upstream connect timeout: 5 seconds;
+- upstream send/read timeout: 10 seconds;
+- no upstream retry for the non-idempotent POST request.
 
-| Component  | Choice             |
-|------------|--------------------|
-| Approach   | *(e.g., Nginx, Express, FastAPI, Kong, Traefik)* |
+Gateway-generated errors use JSON:
 
-## Routing Table
+- `429 RATE_LIMIT_EXCEEDED`, with `Retry-After: 1`;
+- `502 BAD_GATEWAY`;
+- `504 GATEWAY_TIMEOUT`.
 
-| External Path        | Target Service | Internal URL                   |
-|----------------------|----------------|--------------------------------|
-| `/api/service-a/*`   | Service A      | `http://service-a:5000/*`      |
-| `/api/service-b/*`   | Service B      | `http://service-b:5000/*`      |
+## Validation
 
-## Running
-
-```bash
-# From project root
-docker compose up gateway --build
+```powershell
+docker compose config --quiet
+docker compose build gateway
+docker compose run --rm gateway nginx -t
 ```
-
-## Configuration
-
-The gateway uses Docker Compose networking. Services are accessible by their
-service names defined in `docker-compose.yml` (e.g., `service-a`, `service-b`).
-
-## Notes
-
-- Use service names (not `localhost`) for upstream URLs inside Docker
-- The gateway exposes port 8080 to the host

@@ -116,6 +116,20 @@ graph TB
     style Data fill:#fce4ec,stroke:#E91E63
 ```
 
+---
+
+## TV4 Resilience Extension (2026-07)
+
+The running design now extends the original synchronous statistics flow with a durable event-consumer path:
+
+- Nginx limits the submit endpoint to 10 requests/second/IP with burst 20 and returns JSON 429/502/504 errors.
+- Submission Outbox events are expected on exchange `quiz.events`, routing key `exam.submitted`.
+- Statistics consumes queue `statistics.exam-submitted` and dead-letters poison messages to `statistics.exam-submitted.dlq`.
+- `statistics_db` is owned by Statistics Service and stores only `processed_events` idempotency state. Statistics REST reports still derive their data from Submission Service.
+- `eventId` is the primary idempotency key; `submissionId` is a secondary unique business key.
+
+The Outbox producer and relay are owned by TV3 and are integrated when that branch is merged. The consumer, database, gateway protection, and load tests are owned by TV4.
+
 ### Luồng dữ liệu khi học sinh nộp bài
 
 ```mermaid

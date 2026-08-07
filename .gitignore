@@ -110,3 +110,8 @@ coverage/
 .pytest_cache/
 htmlcov/
 test-results/
+
+# Generated TV4 load-test artifacts
+scripts/load-test/fixtures/submissions.json
+scripts/load-test/results/*.json
+scripts/load-test/results/*.txt

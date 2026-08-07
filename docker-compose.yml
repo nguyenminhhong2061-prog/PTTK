@@ -12,6 +12,7 @@ services:
     depends_on:
       - exam-service
       - submission-service
+      - statistics-service
     networks:
       - app-network
 
@@ -24,6 +25,8 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-changeme}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
@@ -124,13 +127,46 @@ services:
       - "${STATISTICS_SERVICE_PORT:-5003}:8080"
     environment:
       SUBMISSION_SERVICE_URL: http://submission-service:8080
+      DB_HOST: statistics-db
+      DB_PORT: 3306
+      DB_NAME: statistics_db
+      DB_USER: ${DB_USER:-root}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: ${RABBITMQ_USER:-admin}
       RABBITMQ_PASS: ${RABBITMQ_PASS:-changeme}
+      RABBITMQ_EXCHANGE: ${RABBITMQ_EXCHANGE:-quiz.events}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-statistics.exam-submitted}
+      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-exam.submitted}
+      RABBITMQ_DLQ: ${RABBITMQ_DLQ:-statistics.exam-submitted.dlq}
     depends_on:
-      - submission-service
-      - rabbitmq
+      submission-service:
+        condition: service_started
+      statistics-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  # Statistics owns this database only for durable consumer idempotency state.
+  statistics-db:
+    image: mysql:8.0
+    ports:
+      - "${STATISTICS_DB_PORT:-3309}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-changeme}
+      MYSQL_DATABASE: statistics_db
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - statistics-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-changeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - app-network
 
@@ -166,3 +202,5 @@ networks:
 volumes:
   exam-db-data:
   submission-db-data:
+  statistics-db-data:
+  rabbitmq-data:
