@@ -28,7 +28,7 @@ import java.util.List;
 @Slf4j
 public class OutboxRelayJob {
 
-    private static final int MAX_RETRY_COUNT = 5;
+    private static final int MAX_RETRY_COUNT = 30;
 
     private final OutboxEventRepository outboxEventRepository;
     private final RabbitTemplate rabbitTemplate;
