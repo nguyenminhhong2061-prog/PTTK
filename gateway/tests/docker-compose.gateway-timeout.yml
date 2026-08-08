@@ -1,0 +1,15 @@
+services:
+  slow-upstream:
+    image: python:3.12-alpine
+    command: ["python", "/app/slow_upstream.py"]
+    volumes:
+      - ./gateway/tests/slow_upstream.py:/app/slow_upstream.py:ro
+    networks:
+      - app-network
+
+  gateway:
+    volumes:
+      - ./gateway/tests/nginx.timeout.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      slow-upstream:
+        condition: service_started

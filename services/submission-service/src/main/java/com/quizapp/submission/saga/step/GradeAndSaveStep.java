@@ -12,16 +12,17 @@ import com.quizapp.submission.repository.SubmissionRepository;
 import com.quizapp.submission.saga.SagaStep;
 import com.quizapp.submission.saga.SubmissionSagaContext;
 import com.quizapp.submission.service.GradingService;
-import com.quizapp.submission.dto.event.ExamSubmittedEvent;
 import com.quizapp.submission.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
@@ -82,15 +83,16 @@ public class GradeAndSaveStep implements SagaStep<SubmissionSagaContext, Void> {
 
         // 6. Tích hợp Outbox Event
         ExamSubmittedEvent event = ExamSubmittedEvent.builder()
+            .eventId(UUID.randomUUID().toString())
+            .eventType("EXAM_SUBMITTED")
+            .eventVersion(1)
+            .occurredAt(Instant.now())
             .submissionId(submission.getId())
             .examId(submission.getExamId())
             .studentId(submission.getStudentId())
             .score(submission.getScore())
-            .correctCount(submission.getCorrectCount())
-            .totalQuestions(submission.getTotalQuestions())
-            .submittedAt(submission.getSubmittedAt())
             .build();
-        outboxService.saveEvent("ExamSubmitted", submission.getId(), event);
+        outboxService.saveEvent("EXAM_SUBMITTED", submission.getId(), event);
 
         log.info("Saga Execute: Lưu điểm thành công cho submission {}: Score = {}", submissionId, result.getScore());
 

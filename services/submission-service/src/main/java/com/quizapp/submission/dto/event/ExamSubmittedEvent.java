@@ -5,26 +5,23 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
- * Payload của event "ExamSubmitted" — được serialize thành JSON, ghi vào bảng
- * outbox, và cuối cùng publish sang RabbitMQ (routing key "exam.submitted").
- *
- * Đây là CONTRACT giữa Submission Service (publisher — TV3) và Statistics
- * Service (consumer — TV4). Đổi field ở đây bắt buộc phải đồng bộ với
- * ExamSubmittedEvent bên statistics-service.
+ * Versioned contract emitted by the Submission Outbox and consumed by the
+ * Statistics Service.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ExamSubmittedEvent {
+    private String eventId;
+    private String eventType;
+    private Integer eventVersion;
+    private Instant occurredAt;
     private String submissionId;
     private Long examId;
     private String studentId;
     private Double score;
-    private Integer correctCount;
-    private Integer totalQuestions;
-    private LocalDateTime submittedAt;
 }

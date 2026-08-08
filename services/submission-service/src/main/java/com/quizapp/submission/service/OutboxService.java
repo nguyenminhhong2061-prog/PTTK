@@ -51,7 +51,7 @@ public class OutboxService {
             outboxEventRepository.save(event);
             log.info("Outbox: đã ghi event {} (aggregateId={}) vào bảng outbox_events, chờ relay",
                     eventType, aggregateId);
-        } catch (Exception e) {
+        } catch (Exception | StackOverflowError e) {
             // Ném lại lỗi để @Transactional bao ngoài (GradeAndSaveStep) rollback toàn bộ,
             // bao gồm cả điểm số vừa lưu — tránh tình huống lưu điểm thành công nhưng
             // không thể tạo được event tương ứng.
