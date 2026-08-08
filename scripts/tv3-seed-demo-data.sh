@@ -252,6 +252,31 @@ run_scenario3() {
   ok "Kịch bản 3 hoàn tất — kỳ vọng Statistics tự nhận và xử lý hết message tồn đọng sau khi khởi động lại"
 }
 
+run_scenario4() {
+  log "KỊCH BẢN 4 — Ghi Outbox thất bại → chứng minh Saga rollback đúng"
+  read -r exam_id student_id submission_id <<<"$(seed_exam_and_session "scenario4")"
+
+  log "Giả lập lỗi ghi outbox_events (thêm cột NOT NULL không default)"
+  sql_submission "ALTER TABLE outbox_events ADD COLUMN demo_break INT NOT NULL;"
+
+  log "Nộp bài (kỳ vọng: API trả lỗi, KHÔNG trả về điểm)"
+  curl -s -X POST "${GATEWAY_URL}/submissions/${submission_id}/submit" -H 'Content-Type: application/json' | jq .
+
+  log "Kiểm tra trạng thái submission — kỳ vọng vẫn IN_PROGRESS, score=NULL"
+  sql_submission "SELECT id, status, score, correct_count FROM submissions WHERE id='${submission_id}';"
+
+  log "Kiểm tra outbox_events — kỳ vọng KHÔNG có row nào cho submission này"
+  sql_submission "SELECT COUNT(*) AS outbox_rows FROM outbox_events WHERE payload LIKE '%${submission_id}%';"
+
+  log "Dọn dẹp: gỡ cột giả lập lỗi"
+  sql_submission "ALTER TABLE outbox_events DROP COLUMN demo_break;"
+
+  log "Nộp lại bài (giờ hoạt động bình thường) — chứng minh học sinh có thể nộp lại vì trạng thái chưa từng đổi"
+  curl -s -X POST "${GATEWAY_URL}/submissions/${submission_id}/submit" -H 'Content-Type: application/json' | jq .
+
+  ok "Kịch bản 4 hoàn tất — Saga đã rollback đúng: không mất đồng bộ giữa điểm và outbox"
+}
+
 seed_only() {
   log "Chỉ tạo dữ liệu (không đụng tới trạng thái docker của các service)"
   seed_question_bank
@@ -284,10 +309,12 @@ main() {
     scenario1) run_scenario1 ;;
     scenario2) run_scenario2 ;;
     scenario3) run_scenario3 ;;
+    scenario4) run_scenario4 ;;
     all)
       run_scenario1
       run_scenario2
       run_scenario3
+      run_scenario4
       ;;
     *)
       die "Mode không hợp lệ: '${mode}'. Dùng: seed | scenario1 | scenario2 | scenario3 | all"
